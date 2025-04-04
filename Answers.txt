@@ -613,3 +613,188 @@ public class StudentRepository {
         return jdbcTemplate.update(sql, id) > 0;
     }
 }
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+// File: LibraryController.java
+package com.wecp.library.controller;
+
+import com.wecp.library.controller.exception.UserNotSubscribedException;
+import com.wecp.library.domain.Issue;
+import com.wecp.library.domain.User;
+import com.wecp.library.repository.IssueRepository;
+import com.wecp.library.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/v1")
+public class LibraryController {
+
+    @Autowired
+    private UserRepository userRepo;
+
+    @Autowired
+    private IssueRepository issueRepo;
+
+    @PostMapping("/issue-book")
+    public ResponseEntity<Issue> issueBook(@RequestBody Issue issue) {
+        Optional<User> userOpt = userRepo.findById(issue.getUser().getId());
+        if (userOpt.isPresent() && userOpt.get().getSubscribed()) {
+            Issue savedIssue = issueRepo.save(issue);
+            return ResponseEntity.ok(savedIssue);
+        } else {
+            throw new UserNotSubscribedException("User subscription has expired");
+        }
+    }
+
+    @PostMapping("/create-user")
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        User savedUser = userRepo.save(user);
+        return ResponseEntity.ok(savedUser);
+    }
+
+    @GetMapping("/renew-user-subscription/{id}")
+    public ResponseEntity<User> renewUserSubscription(@PathVariable Long id) {
+        Optional<User> userOpt = userRepo.findById(id);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setSubscribed(true);
+            userRepo.save(user);
+            return ResponseEntity.ok(user);
+        } else {
+            return ResponseEntity.noContent().build();
+        }
+    }
+}
+
+// File: WebSecurityConfigurer.java
+package com.wecp.library.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+@Configuration
+@EnableWebSecurity
+public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .csrf().disable()
+            .authorizeRequests()
+            .antMatchers("/api/v1/issue-book").permitAll()
+            .antMatchers("/api/v1/create-user", "/api/v1/renew-user-subscription/**").authenticated()
+            .anyRequest().authenticated()
+            .and()
+            .httpBasic();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+// File: UserRepository.java
+package com.wecp.library.repository;
+
+import com.wecp.library.domain.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+}
+
+// File: IssueRepository.java
+package com.wecp.library.repository;
+
+import com.wecp.library.domain.Issue;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface IssueRepository extends JpaRepository<Issue, Long> {
+}
+
+// File: User.java
+package com.wecp.library.domain;
+
+import javax.persistence.*;
+
+@Entity
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String username;
+    private String password;
+    private Boolean subscribed;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public Boolean getSubscribed() { return subscribed; }
+    public void setSubscribed(Boolean subscribed) { this.subscribed = subscribed; }
+}
+
+// File: Issue.java
+package com.wecp.library.domain;
+
+import javax.persistence.*;
+
+@Entity
+public class Issue {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String bookName;
+
+    @ManyToOne
+    private User user;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getBookName() { return bookName; }
+    public void setBookName(String bookName) { this.bookName = bookName; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+}
+
+// File: UserNotSubscribedException.java
+package com.wecp.library.controller.exception;
+
+public class UserNotSubscribedException extends RuntimeException {
+    public UserNotSubscribedException(String message) {
+        super(message);
+    }
+}
+# File: application.properties
+spring.datasource.url=jdbc:mysql://localhost:3306/library_db
+spring.datasource.username=root
+spring.datasource.password=your_password
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.security.user.name=admin
+spring.security.user.password=admin123
