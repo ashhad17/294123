@@ -586,12 +586,11 @@ const products = [
   { id: 2, name: "Product 2", price: 20 },
   { id: 3, name: "Product 3", price: 30 }
 ];
- 
+
 const shoppingCart = {
   items: [],
   coupon: null,
- 
-  // Function to add products to the cart
+
   addToCart: function(productId, quantity) {
     const product = products.find(p => p.id === productId);
     if (!product) {
@@ -604,10 +603,8 @@ const shoppingCart = {
     } else {
       this.items.push({ product, quantity });
     }
-    console.log(`${quantity} x ${product.name} added to cart.`);
   },
- 
-  // Function to view the current contents of the cart
+
   viewCart: function() {
     console.log("Cart Contents:");
     if (this.items.length === 0) {
@@ -616,54 +613,43 @@ const shoppingCart = {
     }
     this.items.forEach(item => {
       console.log(
-        `${item.product.name} - $${item.product.price} x ${item.quantity} = $${item.product.price * item.quantity}`
+        `${item.product.name} - Quantity: ${item.quantity} - Price: $${item.product.price}`
       );
     });
   },
- 
-  // Function to apply a coupon code
+
   applyCoupon: function(couponCode) {
-    // Let's assume we have only one valid coupon for simplicity
     const validCoupons = {
-      "DISCOUNT10": 10, // 10% discount
-      "DISCOUNT20": 20  // 20% discount
+      "DISCOUNT10": 10,
+      "DISCOUNT20": 20
     };
- 
+
     if (validCoupons[couponCode]) {
-      this.coupon = { code: couponCode, discount: validCoupons[couponCode] };
-      console.log(`Coupon ${couponCode} applied. You get ${validCoupons[couponCode]}% off.`);
+      this.coupon = couponCode; // Save the discount percentage directly
     } else {
       console.log("Invalid coupon code.");
     }
   },
- 
-  // Function to calculate the total payable amount
+
   calculateTotalAmount: function() {
     let total = 0;
     this.items.forEach(item => {
       total += item.product.price * item.quantity;
     });
- 
+
     if (this.coupon) {
-      const discountAmount = (total * this.coupon.discount) / 100;
+      const discountAmount = (total * this.coupon) / 100;
       total -= discountAmount;
-      console.log(`Discount of ${this.coupon.discount}% applied: -$${discountAmount.toFixed(2)}`);
+      // console.log(`Discount of ${this.coupon}% applied: -$${discountAmount.toFixed(2)}`);
     }
- 
-    console.log(`Total Payable Amount: $${total.toFixed(2)}`);
+
+    const totalMessage = `Total payable amount: $${total.toFixed(2)}`;
+    console.log(totalMessage);
     return total;
   }
 };
- 
-// Example usage
-shoppingCart.addToCart(1, 2);
-shoppingCart.addToCart(2, 1);
-shoppingCart.viewCart();
-shoppingCart.applyCoupon("DISCOUNT10");
-shoppingCart.calculateTotalAmount();
- 
-module.exports = shoppingCart;
 
+module.exports = shoppingCart;
 
 --------------------------------------------------------------------------------------------------------------
 
