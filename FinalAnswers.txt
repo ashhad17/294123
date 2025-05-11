@@ -127,46 +127,56 @@ export const App = ({ google }) => {
   }, [properties]);
  
   return (
+
+
+
+
+
 <div style={{ display: "flex" }}>
-<div style={{ flex: "1 1 50%", padding: "10px" }}>
-<input
+      <div style={{ flex: "1 1 50%", padding: "10px" }}>
+        {/* ✅ label for accessibility test */}
+        <label htmlFor="searchInput">Enter location</label>
+        <input
+          id="searchInput"
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search location"
         />
-<button onClick={handleSearch}>Search</button>
- 
+        <button onClick={handleSearch}>Search</button>
+
+        
+
         <ul>
           {searchResults.map((result, index) => (
-<li key={index}>
+            <li key={index}>
               {result.name}
-<button onClick={() => handleAddLocation(result)}>Add</button>
-</li>
+              <button onClick={() => handleAddLocation(result)}>Add</button>
+            </li>
           ))}
-</ul>
- 
+        </ul>
+
         <h3>Saved Locations</h3>
-<ul>
+        <ul>
           {properties.map((prop, index) => (
-<li key={index}>
+            <li key={index}>
               {prop.name}
-<button onClick={() => handleRemoveLocation(index)}>Remove</button>
-</li>
+              <button onClick={() => handleRemoveLocation(index)}>Remove</button>
+            </li>
           ))}
-</ul>
-</div>
- 
+        </ul>
+      </div>
+
       <div style={{ flex: "1 1 50%", height: "500px" }}>
-<Map
+        <Map
           google={google}
           zoom={5}
           initialCenter={mapCenter}
           onReady={handleMapReady}
           onClick={handleMapClick}
->
+        >
           {properties.map((prop, index) => (
-<LocationMarker
+            <LocationMarker
               key={index}
               position={prop.position}
               map={map}
@@ -174,16 +184,19 @@ export const App = ({ google }) => {
               onRemove={() => handleRemoveLocation(index)}
             />
           ))}
-</Map>
-</div>
-</div>
+        </Map>
+      </div>
+    </div>
+
+
+
+    
   );
 };
  
 export default GoogleApiWrapper({
   apiKey: "AIzaSyDh0LyUchQyqlcsHgYRO5w7iUV4ttlNdDI",
 })(App);
-
 
 --------------------------------------------------------------------------------------------------------------
 
