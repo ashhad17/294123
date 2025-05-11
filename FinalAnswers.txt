@@ -1351,6 +1351,95 @@ export class HomeComponent {
 --------------------------------------------------------------------------------------------------------------
 
 
+package com.hotelbooking.entity;
+
+public class Booking {
+    
+    private int id;
+    private String guestName;
+    private int roomNumber;
+
+    // Constructors
+    public Booking() {}
+    public Booking( String guestName, int roomNumber) {
+        this.id = 0;
+        this.guestName = guestName;
+        this.roomNumber = roomNumber;
+    }
+
+    // Getters and Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
+    public String getGuestName() { return guestName; }
+    public void setGuestName(String guestName) { this.guestName = guestName; }
+
+    public int getRoomNumber() { return roomNumber; }
+    public void setRoomNumber(int roomNumber) { this.roomNumber = roomNumber; }
+}
+
+
+
+
+package com.hotelbooking.service;
+import com.hotelbooking.entity.Booking;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class BookingService {
+
+    private static int counter = 1;
+    private final List<Booking> bookingList = new ArrayList<>();
+
+    public Booking addBooking(Booking booking) {
+        booking.setId(counter++); // Set unique ID
+        bookingList.add(booking);
+        return booking;
+    }
+
+    public Optional<Booking> getBookingById(int id) {
+        return bookingList.stream()
+                .filter(booking -> booking.getId() == id)
+                .findFirst();
+    }
+}
+
+
+
+package com.hotelbooking.controller;
+import com.hotelbooking.entity.Booking;
+import com.hotelbooking.service.BookingService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/bookings")
+public class BookingController {
+
+@Autowired
+    private  BookingService bookingService;
+
+    
+
+    @PostMapping
+    public ResponseEntity<Booking> addBooking(@RequestBody Booking booking) {
+// booking.setId();
+
+return ResponseEntity.ok(bookingService.addBooking(booking));
+    }
+
+    @GetMapping("/{id}")
+    public Booking getBookingById(@PathVariable int id) {
+        return bookingService.getBookingById(id).get();
+    }
+
+}
+
 
 
 
