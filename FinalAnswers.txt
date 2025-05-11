@@ -1,0 +1,1393 @@
+Location
+
+import { useEffect } from 'react';
+ 
+const LocationMarker = ({ position, map, marker, onRemove }) => {
+  useEffect(() => {
+    if (!marker) return;
+ 
+    const handleClick = () => {
+      if (onRemove) onRemove();
+      marker.setMap(null); // remove from map
+    };
+ 
+    marker.addListener("click", handleClick);
+ 
+    // Cleanup on unmount
+    return () => {
+      window.google.maps.event.clearListeners(marker, "click");
+    };
+  }, [map, position, marker, onRemove]);
+ 
+  return null;
+};
+ 
+export default LocationMarker;
+--------------------------------------------------------------------------------------------------------------
+
+
+import React, { useState, useEffect, useCallback } from "react";
+import { Map, GoogleApiWrapper } from "google-maps-react";
+import LocationMarker from "./LocationMarker";
+ 
+export const App = ({ google }) => {
+  const [properties, setProperties] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [mapCenter, setMapCenter] = useState({ lat: 31.5497, lng: 74.3436 });
+  const [map, setMap] = useState(null);
+  const [markers, setMarkers] = useState([]);
+ 
+  const handleMapReady = (mapProps, map) => {
+    setMap(map);
+    setMapCenter(map.center.toJSON());
+  };
+ 
+  const handleSearch = () => {
+    if (!google || !google.maps) return;
+ 
+    const service = new google.maps.places.PlacesService(map);
+    service.textSearch({ query: searchQuery }, (results, status) => {
+      if (status === "OK") {
+        setSearchResults(results);
+      }
+    });
+  };
+ 
+  const handleAddLocation = (result) => {
+    const location = result.geometry.location;
+    const position = {
+      lat: location.lat(),
+      lng: location.lng(),
+    };
+ 
+    const marker = new google.maps.Marker({
+      position,
+      map,
+      title: result.name,
+    });
+ 
+    setMarkers((prev) => [...prev, marker]);
+    setProperties((prev) => [...prev, { name: result.name, position }]);
+    setSearchResults([]);
+    setSearchQuery("");
+  };
+ 
+  const handleRemoveLocation = useCallback(
+    (index) => {
+      const newProperties = [...properties];
+      newProperties.splice(index, 1);
+      setProperties(newProperties);
+      removeMarker(index);
+    },
+    [properties]
+  );
+ 
+  const removeMarker = useCallback(
+    (index) => {
+      if (index < 0 || index >= markers.length) return;
+ 
+      const marker = markers[index];
+      marker.setMap(null);
+      const newMarkers = [...markers];
+      newMarkers.splice(index, 1);
+      setMarkers(newMarkers);
+    },
+    [markers]
+  );
+ 
+  const handleMapClick = (mapProps, map, clickEvent) => {
+    const geocoder = new google.maps.Geocoder();
+    const latLng = {
+      lat: clickEvent.latLng.lat(),
+      lng: clickEvent.latLng.lng(),
+    };
+ 
+    geocoder.geocode({ location: latLng }, (results, status) => {
+      if (status === "OK" && results[0]) {
+        const marker = new google.maps.Marker({
+          position: latLng,
+          map,
+          title: results[0].formatted_address,
+        });
+ 
+        setMarkers((prev) => [...prev, marker]);
+        setProperties((prev) => [
+          ...prev,
+          { name: results[0].formatted_address, position: latLng },
+        ]);
+      }
+    });
+  };
+ 
+  useEffect(() => {
+    if (properties.length > 0) {
+      setMapCenter(properties[properties.length - 1].position);
+    }
+  }, [properties]);
+ 
+  return (
+<div style={{ display: "flex" }}>
+<div style={{ flex: "1 1 50%", padding: "10px" }}>
+<input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search location"
+        />
+<button onClick={handleSearch}>Search</button>
+ 
+        <ul>
+          {searchResults.map((result, index) => (
+<li key={index}>
+              {result.name}
+<button onClick={() => handleAddLocation(result)}>Add</button>
+</li>
+          ))}
+</ul>
+ 
+        <h3>Saved Locations</h3>
+<ul>
+          {properties.map((prop, index) => (
+<li key={index}>
+              {prop.name}
+<button onClick={() => handleRemoveLocation(index)}>Remove</button>
+</li>
+          ))}
+</ul>
+</div>
+ 
+      <div style={{ flex: "1 1 50%", height: "500px" }}>
+<Map
+          google={google}
+          zoom={5}
+          initialCenter={mapCenter}
+          onReady={handleMapReady}
+          onClick={handleMapClick}
+>
+          {properties.map((prop, index) => (
+<LocationMarker
+              key={index}
+              position={prop.position}
+              map={map}
+              marker={markers[index]}
+              onRemove={() => handleRemoveLocation(index)}
+            />
+          ))}
+</Map>
+</div>
+</div>
+  );
+};
+ 
+export default GoogleApiWrapper({
+  apiKey: "AIzaSyDh0LyUchQyqlcsHgYRO5w7iUV4ttlNdDI",
+})(App);
+
+
+--------------------------------------------------------------------------------------------------------------
+
+
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>CMS: Article Publishing Interface</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+      integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <style>
+      body {
+        background-color: #1e1e2f;
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        width: 50%;
+        justify-content: center;
+        align-items: center;
+        border: 1px solid #fff;
+        margin: 0 auto;
+        padding: 10px;
+      }
+
+      div {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        margin: 1rem;
+      }
+
+      label {
+        width: 20%;
+      }
+
+      input[type="text"],
+      select,
+      textarea {
+        width: 80%;
+        padding: 8px;
+        border: 1px solid #ccc;
+      }
+
+      input[type="checkbox"] {
+        transform: scale(1.2);
+      }
+
+      a:hover {
+        color: orange;
+      }
+
+      .publish {
+        justify-content: start;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .summary,
+      .error {
+        color: white;
+      }
+
+      .error {
+        background-color: red;
+        flex-direction: column;
+      }
+
+      .error p {
+        text-align: center;
+      }
+
+      .error p::first-letter {
+        text-transform: capitalize;
+      }
+
+      .articles {
+        display: flex;
+        flex-direction: column;
+        width: 51%;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto;
+      }
+
+      .article {
+        display: flex;
+        width: 100%;
+        flex-direction: column;
+        border: 1px solid #fff;
+        color: white;
+        align-items: center;
+        margin-bottom: 10px;
+        padding: 10px;
+      }
+
+      .delete-icon {
+        color: red;
+        padding: 10px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <form>
+      <h2 style="color: white">CMS: Article Publishing Interface</h2>
+      <div>
+        <label for="title" style="color: white">Article Title</label>
+        <input type="text" id="title" />
+      </div>
+
+      <div>
+        <label for="content" style="color: white">Article Content</label>
+        <textarea id="content" rows="4"></textarea>
+      </div>
+
+      <div>
+        <label for="category" style="color: white">Category</label>
+        <select id="category">
+          <option value="Technology">Technology</option>
+          <option value="Lifestyle">Lifestyle</option>
+          <option value="Business">Business</option>
+        </select>
+      </div>
+
+      <div class="publish">
+        <label for="is_published" style="color: white">Publish</label>
+        <input type="checkbox" id="is_published" />
+      </div>
+
+      <div>
+        <button id="add-article">Submit</button>
+      </div>
+
+      <div id="error"></div>
+    </form>
+
+    <script type="text/javascript">
+      const articles = [];
+
+      const btn = document.getElementById("add-article");
+      btn.addEventListener("click", addArticle);
+
+      function addArticle(e) {
+        e.preventDefault();
+        let errorMessages = [];
+        const article = {};
+
+        const title = document.getElementById("title").value.trim();
+        const content = document.getElementById("content").value.trim();
+        const category = document.getElementById("category").value;
+        const isPublished = document.getElementById("is_published").checked;
+
+        const errorDiv = document.getElementById("error");
+        errorDiv.innerHTML = "";
+
+        if (!title) errorMessages.push("title is empty ");
+        if (!content) errorMessages.push("content is empty ");
+
+        if (errorMessages.length > 0) {
+          errorDiv.innerHTML = errorMessages.map(msg => `<p>${msg}</p>`).join("") + "<p></p>";
+        } else {
+          article.title = title;
+          article.content = content;
+          article.category = category;
+          article.isPublished = isPublished;
+
+          articles.push(article);
+          displayArticles(articles);
+
+          document.getElementById("title").value = "";
+          document.getElementById("content").value = "";
+          document.getElementById("category").value = "Technology";
+          document.getElementById("is_published").checked = false;
+        }
+      }
+
+      function displayArticles(articles) {
+        const existingContainer = document.querySelector(".articles");
+        if (existingContainer) {
+          document.body.removeChild(existingContainer);
+        }
+        const articlesContainer = document.createElement("div");
+        articlesContainer.classList.add("articles");
+
+        articles.forEach((article, index) => {
+          const articleDiv = document.createElement("div");
+          articleDiv.classList.add("article");
+
+          const title = document.createElement("h3");
+          title.textContent = article.title;
+
+          const category = document.createElement("p");
+          category.textContent = "Category: " + article.category;
+
+          const status = document.createElement("p");
+          status.textContent = "Status: " + (article.isPublished ? "Published" : "Draft");
+
+          const deleteIcon = document.createElement("i");
+          deleteIcon.classList.add("fas", "fa-trash-alt", "delete-icon");
+          deleteIcon.addEventListener("click", () => {
+            articles.splice(index, 1);
+            displayArticles(articles);
+          });
+
+          articleDiv.appendChild(title);
+          articleDiv.appendChild(category);
+          articleDiv.appendChild(status);
+          articleDiv.appendChild(deleteIcon);
+          articlesContainer.appendChild(articleDiv);
+        });
+
+        document.body.appendChild(articlesContainer);
+      }
+    </script>
+  </body>
+</html>
+--------------------------------------------------------------------------------------------------------------
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Registration Form</title>
+<style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+ 
+    .registration-form {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 300px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+ 
+    .form-group {
+      margin-bottom: 15px;
+    }
+ 
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+ 
+    input.error {
+      border-color: red;
+    }
+ 
+    .error {
+      color: red;
+      font-size: 12px;
+    }
+ 
+    .success-message {
+      color: green;
+      margin-top: 10px;
+      border: 1px solid #a8d5a2;
+      background-color: #e6f9e6;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: center;
+    }
+ 
+    .submit-button {
+      width: 100%;
+      padding: 10px;
+      background: linear-gradient(to right, #4CAF50, #45A049);
+      border: none;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+ 
+    .submit-button:hover {
+      background: linear-gradient(to right, #45A049, #4CAF50);
+    }
+</style>
+</head>
+<body>
+<form class="registration-form" id="registration-form">
+<div class="form-group">
+<label for="employeeID">Employee ID</label>
+<input type="text" id="employeeID" />
+<div id="employeeID-error" class="error"></div>
+</div>
+ 
+    <div class="form-group">
+<label for="email">Email</label>
+<input type="email" id="email" />
+<div id="email-error" class="error"></div>
+</div>
+ 
+    <div class="form-group">
+<label for="password">Password</label>
+<input type="password" id="password" />
+<div id="password-error" class="error"></div>
+</div>
+ 
+    <button type="submit" class="submit-button">Register</button>
+<div id="success-message" class="success-message" style="display: none;">
+      Form submitted successfully!
+</div>
+</form>
+ 
+  <script>
+    document.getElementById("registration-form").addEventListener("submit", function (event) {
+      event.preventDefault();
+ 
+      const employeeID = document.getElementById("employeeID");
+      const email = document.getElementById("email");
+      const password = document.getElementById("password");
+ 
+      const employeeIDValue = employeeID.value.trim();
+      const emailValue = email.value.trim();
+      const passwordValue = password.value.trim();
+ 
+      const employeeIDError = document.getElementById("employeeID-error");
+      const emailError = document.getElementById("email-error");
+      const passwordError = document.getElementById("password-error");
+      const successMessage = document.getElementById("success-message");
+ 
+      let errorForm = false;
+ 
+      // Reset errors
+      employeeIDError.textContent = "";
+      emailError.textContent = "";
+      passwordError.textContent = "";
+      successMessage.style.display = "none";
+ 
+      employeeID.classList.remove("error");
+      email.classList.remove("error");
+      password.classList.remove("error");
+ 
+      const employeeIDRegex = /^[a-zA-Z0-9]+$/;
+      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+ 
+      // Employee ID validation
+      if (!employeeIDValue) {
+        employeeIDError.textContent = "Employee ID is required.";
+        employeeID.classList.add("error");
+        errorForm = true;
+      } else if (!employeeIDRegex.test(employeeIDValue)) {
+        employeeIDError.textContent = "Employee ID can only contain letters and numbers.";
+        employeeID.classList.add("error");
+        errorForm = true;
+      }
+ 
+      // Email validation
+      if (!emailValue) {
+        emailError.textContent = "Email is required.";
+        email.classList.add("error");
+        errorForm = true;
+      } else if (!emailRegex.test(emailValue)) {
+        emailError.textContent = "Please enter a valid email address.";
+        email.classList.add("error");
+        errorForm = true;
+      }
+ 
+      // Password validation
+      if (!passwordValue) {
+        passwordError.textContent = "Password is required.";
+        password.classList.add("error");
+        errorForm = true;
+      }
+ 
+      // If no errors, show success message
+      if (!errorForm) {
+        successMessage.style.display = "block";
+      }
+    });
+</script>
+</body>
+</html>
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+
+const products = [
+  { id: 1, name: "Product 1", price: 10 },
+  { id: 2, name: "Product 2", price: 20 },
+  { id: 3, name: "Product 3", price: 30 }
+];
+ 
+const shoppingCart = {
+  items: [],
+  coupon: null,
+ 
+  // Function to add products to the cart
+  addToCart: function(productId, quantity) {
+    const product = products.find(p => p.id === productId);
+    if (!product) {
+      console.log("Product not found!");
+      return;
+    }
+    const existingItem = this.items.find(item => item.product.id === productId);
+    if (existingItem) {
+      existingItem.quantity += quantity;
+    } else {
+      this.items.push({ product, quantity });
+    }
+    console.log(`${quantity} x ${product.name} added to cart.`);
+  },
+ 
+  // Function to view the current contents of the cart
+  viewCart: function() {
+    console.log("Cart Contents:");
+    if (this.items.length === 0) {
+      console.log("Your cart is empty.");
+      return;
+    }
+    this.items.forEach(item => {
+      console.log(
+        `${item.product.name} - $${item.product.price} x ${item.quantity} = $${item.product.price * item.quantity}`
+      );
+    });
+  },
+ 
+  // Function to apply a coupon code
+  applyCoupon: function(couponCode) {
+    // Let's assume we have only one valid coupon for simplicity
+    const validCoupons = {
+      "DISCOUNT10": 10, // 10% discount
+      "DISCOUNT20": 20  // 20% discount
+    };
+ 
+    if (validCoupons[couponCode]) {
+      this.coupon = { code: couponCode, discount: validCoupons[couponCode] };
+      console.log(`Coupon ${couponCode} applied. You get ${validCoupons[couponCode]}% off.`);
+    } else {
+      console.log("Invalid coupon code.");
+    }
+  },
+ 
+  // Function to calculate the total payable amount
+  calculateTotalAmount: function() {
+    let total = 0;
+    this.items.forEach(item => {
+      total += item.product.price * item.quantity;
+    });
+ 
+    if (this.coupon) {
+      const discountAmount = (total * this.coupon.discount) / 100;
+      total -= discountAmount;
+      console.log(`Discount of ${this.coupon.discount}% applied: -$${discountAmount.toFixed(2)}`);
+    }
+ 
+    console.log(`Total Payable Amount: $${total.toFixed(2)}`);
+    return total;
+  }
+};
+ 
+// Example usage
+shoppingCart.addToCart(1, 2);
+shoppingCart.addToCart(2, 1);
+shoppingCart.viewCart();
+shoppingCart.applyCoupon("DISCOUNT10");
+shoppingCart.calculateTotalAmount();
+ 
+module.exports = shoppingCart;
+
+
+--------------------------------------------------------------------------------------------------------------
+
+// Define two arrays: one for names and another for marks
+const names: string[] = ["Alice", "Bob", "Charlie", "David"];
+const marks: number[] = [85, 92, 78, 90];
+ 
+// Display names and marks using a for loop
+for (let i = 0; i < names.length; i++) {
+    console.log(`${names[i]}: ${marks[i]}`);
+}
+ 
+// Display the average marks
+console.log(`\nAverage Marks: ${findAvg(marks)}`);
+ 
+// index.ts
+export function findAvg(marks: number[]): number {
+    let sum = 0;
+    for (let mark of marks) {
+        sum += mark;
+    }
+    const averageMarks = sum / marks.length;
+    return averageMarks;
+}
+
+
+--------------------------------------------------------------------------------------------------------------
+
+
+export class Patient {
+  patientID: number;
+  name: string;
+  medicalCondition: string;
+ 
+  constructor(patientID: number, name: string, medicalCondition: string) {
+    this.patientID = patientID;
+    this.name = name;
+    this.medicalCondition = medicalCondition;
+  }
+ 
+  // displayDetails() method to log patient details
+  displayDetails(): void {
+    console.log(`Patient ID: ${this.patientID}, Name: ${this.name}, Medical Condition: ${this.medicalCondition}`);
+  }
+ 
+  // hasCondition() method to check if the patient has a specific condition
+  hasCondition(condition: string): boolean {
+    if (this.medicalCondition === condition) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+ 
+// Create a new Patient object
+const patient1 = new Patient(1, 'John Doe', 'Diabetes');
+ 
+// Call displayDetails and hasCondition methods
+patient1.displayDetails();
+console.log(patient1.hasCondition('Diabetes'));  // This patient has Diabetes.
+console.log(patient1.hasCondition('Cancer'));  // This patient does not have Cancer.
+--------------------------------------------------------------------------------------------------------------
+
+
+// PatientForm.js
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const PatientForm = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    dob: '',
+    medicalHistory: '',
+    currentMedications: '',
+  });
+
+  const [errors, setErrors] = useState({});
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    setErrors({ ...errors, [name]: '' });
+  };
+
+  const validate = (data) => {
+    const errors = {};
+    if (!data.name.trim()) errors.name = 'Name is required';
+    if (!data.dob) errors.dob = 'Date of Birth is required';
+    else if (new Date(data.dob) > new Date()) {
+      errors.dob = 'Date of Birth cannot be a future date';
+    }
+    return errors;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const validationErrors = validate(formData);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      navigate('/error');
+    } else {
+      setErrors({});
+      navigate('/welcome');
+    }
+  };
+
+  return (
+    <div className="form-container">
+      <h1>Patient Registration</h1>
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="name">Name:</label>
+          <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} />
+          {errors.name && <p>{errors.name}</p>}
+        </div>
+        <div>
+          <label htmlFor="dob">Date of Birth:</label>
+          <input type="date" id="dob" name="dob" value={formData.dob} onChange={handleChange} />
+          {errors.dob && <p>{errors.dob}</p>}
+        </div>
+        <div>
+          <label htmlFor="medicalHistory">Medical History:</label>
+          <textarea id="medicalHistory" name="medicalHistory" value={formData.medicalHistory} onChange={handleChange}></textarea>
+        </div>
+        <div>
+          <label htmlFor="currentMedications">Current Medications:</label>
+          <input type="text" id="currentMedications" name="currentMedications" value={formData.currentMedications} onChange={handleChange} />
+        </div>
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+  );
+};
+
+export default PatientForm;
+
+
+import React from 'react';
+
+const ErrorPage = () => {
+  return <h1>Error: Invalid form submission</h1>;
+};
+
+export default ErrorPage;
+
+
+
+// WelcomePage.js
+
+import React from 'react';
+
+const WelcomePage = () => {
+  return <h1>Welcome! Patient registered successfully.</h1>;
+};
+
+export default WelcomePage;
+
+
+--------------------------------------------------------------------------------------------------------------
+
+employee component
+
+import { Component } from '@angular/core';
+import { Employee } from '../model/employee.model';
+
+@Component({
+  selector: 'app-employee',
+  templateUrl: './employee.component.html',
+  styleUrls: ['./employee.component.scss']
+})
+export class EmployeeComponent {
+  // Create an employee list here
+  employees: Employee[] = [
+    { id: 1, name: 'Monisha', position: 'Software Engineer'},
+    { id: 2, name: 'Roshna', position: 'Product Manager' },
+    { id: 3, name: 'Neha', position: 'UX Designer'},
+
+  ];
+}
+
+
+
+
+//employee html
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Position</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let employee of employees">
+      <td>{{ employee.id }}</td>
+      <td>{{ employee.name }}</td>
+      <td>{{ employee.position }}</td>
+    </tr>
+  </tbody>
+</table>
+
+
+vote html
+
+<div>
+  <!-- Label for the age input field -->
+  <label for="age">Enter your Age</label>
+
+  <!-- Input field with two-way data binding to 'userAge' -->
+  <input id="age" [(ngModel)]="userAge" type="number" placeholder="Enter your age" />
+
+  <!-- Button to trigger eligibility check -->
+  <button (click)="checkEligibility()">Check Eligibility</button>
+
+  <!-- Paragraph to display the eligibility message -->
+  <p *ngIf="eligibilityMessage">{{ eligibilityMessage }}</p>
+</div>
+ 
+
+
+--------------------------------------------------------------------------------------------------------------
+
+
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { EmployeeComponent } from '../app/employee/employee.component';
+import { Employee } from '../app/model/employee.model';
+import { VoteComponent } from '../app/vote/vote.component';
+import { FormsModule } from '@angular/forms';
+
+describe('AngularDirective', () => {
+  let employeeComponent: EmployeeComponent;
+  let employeeFixture: ComponentFixture<EmployeeComponent>;
+  let voteComponent: VoteComponent;
+  let voteFixture: ComponentFixture<VoteComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      declarations: [EmployeeComponent, VoteComponent],
+      imports: [FormsModule] 
+    }).compileComponents();
+
+    employeeFixture = TestBed.createComponent(EmployeeComponent);
+    employeeComponent = employeeFixture.componentInstance;
+    employeeFixture.detectChanges();
+
+    voteFixture = TestBed.createComponent(VoteComponent);
+    voteComponent = voteFixture.componentInstance;
+    voteFixture.detectChanges();
+  });
+
+  it('should display employees correctly using ngFor', () => {
+    // Arrange - set the employees data
+    // const testData: Employee[] = [
+    //   new Employee(1, 'John Doe', 'Software Developer'),
+    //   new Employee(2, 'Jane Smith', 'Product Manager'),
+    //   new Employee(3, 'Bob Johnson', 'QA Engineer'),
+    // ];
+    // employeeComponent.employees = testData;
+
+    // // Act - trigger change detection
+    // employeeFixture.detectChanges();
+
+    // // Assert - check if the employees are displayed correctly
+    // const tableRows = employeeFixture.nativeElement.querySelectorAll('tbody tr');
+
+    // expect(tableRows.length).toBe(testData.length);
+
+    // for (let i = 0; i < testData.length; i++) {
+    //   const rowData = testData[i];
+    //   const rowElement = tableRows[i];
+
+    //   // Check each cell in the row
+    //   expect(rowElement.querySelector('td:nth-child(1)').textContent).toContain(rowData.id);
+    //   expect(rowElement.querySelector('td:nth-child(2)').textContent).toContain(rowData.name);
+    //   expect(rowElement.querySelector('td:nth-child(3)').textContent).toContain(rowData.position);
+    // }
+  });
+
+  it('should set eligibilityMessage when userAge is below 18',() => {
+  });
+  it('should set eligibilityMessage when userAge is 18 or above', () => {
+    // Arrange
+  //   voteComponent.userAge = 20;
+
+  //   // Act
+  //   voteComponent.checkEligibility();
+  //   voteFixture.detectChanges();
+
+  //   // Assert
+  //   expect(voteComponent.eligibilityMessage).toEqual('Eligible to vote');
+  // });
+
+  // it('should set eligibilityMessage when userAge is below 18', () => {
+  //   // Arrange
+  //   voteComponent.userAge = 15;
+
+  //   // Act
+  //   voteComponent.checkEligibility();
+  //   voteFixture.detectChanges();
+
+  //   // Assert
+  //   expect(voteComponent.eligibilityMessage).toEqual('Not eligible to vote');
+  });
+
+
+  it('should update eligibilityMessage when userAge changes', () => {
+    // Arrange
+  //   voteComponent.userAge = 16;
+
+  //   // Act
+  //   voteComponent.checkEligibility();
+  //   voteFixture.detectChanges();
+
+  //   // Assert
+  //   expect(voteComponent.eligibilityMessage).toEqual('Not eligible to vote');
+
+  //   // Act - update userAge
+  //   voteComponent.userAge = 19;
+  //   voteComponent.checkEligibility();
+  //   voteFixture.detectChanges();
+
+  //   // Assert
+  //   expect(voteComponent.eligibilityMessage).toEqual('Eligible to vote');
+  });
+});
+
+ 
+
+
+--------------------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------------
+import { Injectable } from '@angular/core';
+import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
+import { AuthService } from './auth.service';
+import { Observable } from 'rxjs';
+ 
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+ 
+  constructor(private authService: AuthService, private router: Router) {
+   }
+ 
+   canActivate(route:ActivatedRouteSnapshot,state:RouterStateSnapshot):boolean{
+ 
+ 
+    
+    const expectedRole=route.data['role'];
+    if(!this.authService.isLoggedIn){
+      this.router.navigate(['/login']);
+      return false;
+    }
+    if(expectedRole === 'admin' && !this.authService.isAdmin){
+      this.router.navigate(['/unauthorized']);
+      return false;
+    }
+    if(expectedRole === 'user' && this.authService.isAdmin){
+      this.router.navigate(['/unauthorized']);
+      return false;
+    }
+
+    return true;
+  }
+}
+ 
+ 
+----
+import { Injectable } from '@angular/core';
+ 
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private readonly AUTH_TOKEN_KEY = 'auth_token';
+  private readonly IS_ADMIN_KEY = 'is_admin';
+  private readonly USERNAME_KEY='username';
+ 
+  constructor() {
+   //complete missing code here
+ 
+  }
+ 
+  get isLoggedIn(): boolean {
+   //complete missing code here
+   return localStorage.getItem(this.AUTH_TOKEN_KEY)==='true';
+  }
+ 
+  set isLoggedIn(value: boolean) {
+  //complete missing code here
+    localStorage.setItem(this.AUTH_TOKEN_KEY,value.toString());
+  }
+ 
+ 
+  get isAdmin(): boolean {
+//complete missing code here
+return localStorage.getItem(this.IS_ADMIN_KEY)==='true';
+  }
+ 
+  set SetUser(value: string) {
+  //complete missing code here
+  localStorage.setItem(this.USERNAME_KEY,value);
+  localStorage.setItem(this.AUTH_TOKEN_KEY,'true');
+  const is_admin=value==='is_admin';
+  localStorage.setItem(this.IS_ADMIN_KEY,is_admin.toString());
+ 
+  // localStorage.setItem(this.USERNAME_KEY,!is_admin.)
+  }
+ 
+  login(username: string, password: string): boolean {
+    // Implement authentication logic
+   //complete missing code here
+   if((username === 'admin' && password === 'admin') || (username === 'user' && password === 'user')){
+    this.isLoggedIn=true;
+    localStorage.setItem(this.IS_ADMIN_KEY,(username ==='admin').toString());
+    this.SetUser=username;
+    return true;
+   }
+   return false;
+  }
+ 
+  logout(): void {
+//complete missing code here
+localStorage.removeItem(this.AUTH_TOKEN_KEY);
+ 
+localStorage.removeItem(this.IS_ADMIN_KEY);
+localStorage.removeItem(this.USERNAME_KEY);  
+}
+}
+ 
+--
+import { CommonModule } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { AbstractControl, FormBuilder, FormGroup, FormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrl: './login.component.scss'
+})
+export class LoginComponent implements OnInit{
+  formModel:any={}
+  itemForm: FormGroup;
+  loginFailed:boolean=false;
+  constructor(private authService: AuthService,private formBuilder: FormBuilder, private router:Router) 
+    {
+      this.itemForm=this.formBuilder.group({
+        username:['',Validators.required],
+        password:['',Validators.required]
+      });
+ 
+   }
+  ngOnInit(): void {
+  }
+  onRegister()
+  {
+    if(this.itemForm.valid)
+    {
+      const username=this.itemForm.value.username;
+      const password=this.itemForm.value.password;
+      const success=this.authService.login(username,password);
+      if(success){
+        this.loginFailed=false;
+        if(this.authService.isAdmin){
+          this.router.navigate(['/admin']);
+        }
+        else{
+          this.router.navigate(['/user']);
+        }
+      }
+      else{
+        this.itemForm.markAllAsTouched();
+      }
+    }
+    else{
+      this.itemForm.markAllAsTouched();
+    }
+  }
+}
+ 
+--------------------------------------------------------------------------------------------
+ 
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Leave Application Form</title>
+<style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+      background-color: #f4f4f4;
+    }
+    form {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 8px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    label {
+      font-weight: bold;
+    }
+    .error {
+      color: red;
+      margin-bottom: 10px;
+    }
+    .success {
+      color: green;
+    }
+</style>
+</head>
+<body>
+ 
+<h2>Corporate Office Leave Application</h2>
+ 
+<form id="itemForm">
+<div class="error" id="errorMsg"></div>
+<label for="EmployeeID">Employee ID</label>
+<input type="text" id="EmployeeID" name="EmployeeID" required>
+ 
+  <label for="StartDate">Start Date</label>
+<input type="date" id="StartDate" name="StartDate" required>
+ 
+  <label for="EndDate">End Date</label>
+<input type="date" id="EndDate" name="EndDate" required>
+ 
+  <label for="ReasonForLeave">Reason for Leave</label>
+<textarea id="ReasonForLeave" name="ReasonForLeave" rows="4" required></textarea>
+ 
+  <button type="submit">Submit</button>
+</form>
+ 
+<div id="result"></div>
+ 
+<script>
+  const form = document.getElementById('itemForm');
+  const errorMsg = document.getElementById('errorMsg');
+  const result = document.getElementById('result');
+ 
+  function checkOutDateValidator(start, end) {
+    return new Date(end) >= new Date(start);
+  }
+ 
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    errorMsg.textContent = '';
+    result.textContent = '';
+ 
+    const EmployeeID = form.EmployeeID.value.trim();
+    const StartDate = form.StartDate.value;
+    const EndDate = form.EndDate.value;
+    const ReasonForLeave = form.ReasonForLeave.value.trim();
+ 
+    if (!EmployeeID || !StartDate || !EndDate || !ReasonForLeave) {
+      errorMsg.textContent = 'All fields are required.';
+      navigateToErrorPage();
+      return;
+    }
+ 
+    const today = new Date().toISOString().split('T')[0];
+    if (StartDate < today) {
+      errorMsg.textContent = 'Start date cannot be in the past.';
+      navigateToErrorPage();
+      return;
+    }
+ 
+    if (!checkOutDateValidator(StartDate, EndDate)) {
+      errorMsg.textContent = 'End date must be after start date.';
+      navigateToErrorPage();
+      return;
+    }
+ 
+    navigateToWelcomePage();
+  });
+ 
+  function navigateToWelcomePage() {
+    result.innerHTML = '<p class="success">Form submitted successfully! Navigating to Welcome Page...</p>';
+    // Simulate routing
+    setTimeout(() => window.location.href = '/welcome.html', 2000); // simulate navigation
+  }
+ 
+  function navigateToErrorPage() {
+    result.innerHTML = '<p class="error">Validation failed. Navigating to Error Page...</p>';
+    // Simulate routing
+    setTimeout(() => window.location.href = '/error.html', 2000);
+  }
+</script>
+ 
+</body>
+</html>
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+// src/app/pages/home/home.component.ts
+import { Component } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+ 
+@Component({
+  selector: 'app-home',
+  templateUrl: './home.component.html',
+  styleUrls: ['./home.component.scss']
+})
+export class HomeComponent {
+  itemForm: FormGroup;
+ 
+  constructor(private fb: FormBuilder, private router: Router) {
+    this.itemForm = this.fb.group({
+      EmployeeID: ['', Validators.required],
+      StartDate: ['', Validators.required],
+      EndDate: ['', [Validators.required]],
+      ReasonForLeave: ['', Validators.required],
+    }, { validators: this.checkOutDateValidator });
+  }
+ 
+  checkOutDateValidator(form: FormGroup) {
+    const start = new Date(form.get('StartDate')?.value);
+    const end = new Date(form.get('EndDate')?.value);
+    return end >= start ? null : { dateInvalid: true };
+  }
+ 
+  onSubmit() {
+    if (this.itemForm.invalid) {
+      this.router.navigate(['/error']);
+      return;
+    }
+ 
+    const startDate = new Date(this.itemForm.value.StartDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // normalize to avoid time diff issues
+ 
+    if (startDate < today) {
+      this.router.navigate(['/error']);
+      return;
+    }
+ 
+    this.router.navigate(['/welcome']);
+  }
+}
+
+<!-- src/app/pages/home/home.component.html -->
+<div class="form-container">
+<h2>Leave Application Form</h2>
+ 
+  <form [formGroup]="itemForm" (ngSubmit)="onSubmit()">
+<label for="EmployeeID">Employee ID:</label>
+<input type="text" formControlName="EmployeeID" id="EmployeeID" />
+ 
+    <label for="StartDate">Start Date:</label>
+<input type="date" formControlName="StartDate" id="StartDate" />
+ 
+    <label for="EndDate">End Date:</label>
+<input type="date" formControlName="EndDate" id="EndDate" />
+ 
+    <label for="ReasonForLeave">Reason for Leave:</label>
+<textarea formControlName="ReasonForLeave" id="ReasonForLeave"></textarea>
+ 
+    <button type="submit">Submit</button>
+ 
+    <div *ngIf="itemForm.errors?.dateInvalid" style="color: red;">
+      End date must be after start date.
+</div>
+</form>
+</div>
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
