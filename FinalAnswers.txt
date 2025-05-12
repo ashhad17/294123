@@ -1,3 +1,6 @@
+Mock test answers
+https://github.com/Ninja1102/MOCK-TEST.git
+---------------------------------------------
 Location
 
 import { useEffect } from 'react';
