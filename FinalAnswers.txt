@@ -1449,7 +1449,1214 @@ return ResponseEntity.ok(bookingService.addBooking(booking));
 
 --------------------------------------------------------------------------------------------------------------
 
+package com.example.securitydemo;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SecurityDemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SecurityDemoApplication.class, args);
+    }
+}
+
+// User Entity
+import jakarta.persistence.*;
+import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import java.util.Collection;
+import java.util.List;
+
+@Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "users")
+public class User implements UserDetails {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String username;
+
+    private String password;
+    private String roles;
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + roles));
+    }
+
+    @Override
+    public boolean isAccountNonExpired() { return true; }
+
+    @Override
+    public boolean isAccountNonLocked() { return true; }
+
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() { return true; }
+}
+
+// User Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsername(String username);
+}
+
+// Custom User Details Service
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+@Service
+public class CustomUserDetailsService implements UserDetailsService {
+    private final UserRepository userRepository;
+
+    public CustomUserDetailsService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    public User loadUserByUsername(String username) throws UsernameNotFoundException {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    }
+}
+
+// Security Configuration
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public InMemoryUserDetailsManager inMemoryUserDetailsManager() {
+        UserDetails user = User.withUsername("user")
+                .password(passwordEncoder().encode("user123"))
+                .roles("USER")
+                .build();
+
+        UserDetails admin = User.withUsername("admin")
+                .password(passwordEncoder().encode("admin123"))
+                .roles("ADMIN")
+                .build();
+
+        return new InMemoryUserDetailsManager(user, admin);
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/admin").hasRole("ADMIN")
+                        .anyRequest().authenticated())
+                .httpBasic()
+                .and()
+                .csrf().disable();
+        return http.build();
+    }
+}
+
+// Controller
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/")
+public class HomeController {
+    @GetMapping
+    public String home() {
+        return "Welcome";
+    }
+
+    @GetMapping("/admin")
+    public String admin() {
+        return "Welcome Admin";
+    }
+}
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+package com.wecp.library.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String username;
+    private String password;
+    private boolean subscribed;
+}
+
+@Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "issues")
+public class Issue {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private Long userId;
+    private Long bookId;
+    private LocalDateTime issuedAt;
+}
+
+package com.wecp.library.repository;
+
+import com.wecp.library.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsername(String username);
+}
+
+package com.wecp.library.repository;
+
+import com.wecp.library.entity.Issue;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface IssueRepository extends JpaRepository<Issue, Long> {}
+
+package com.wecp.library.service;
+
+import com.wecp.library.entity.User;
+import com.wecp.library.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class UserService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    public User createUser(User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setSubscribed(false);
+        return userRepository.save(user);
+    }
+
+    public User renewSubscription(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setSubscribed(true);
+        return userRepository.save(user);
+    }
+}
+
+package com.wecp.library.controller;
+
+import com.wecp.library.entity.Issue;
+import com.wecp.library.entity.User;
+import com.wecp.library.service.IssueService;
+import com.wecp.library.service.UserService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1")
+public class LibraryController {
+    private final UserService userService;
+    private final IssueService issueService;
+
+    public LibraryController(UserService userService, IssueService issueService) {
+        this.userService = userService;
+        this.issueService = issueService;
+    }
+
+    @PostMapping("/create-user")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        return ResponseEntity.ok(userService.createUser(user));
+    }
+
+    @PostMapping("/issue-book")
+    public ResponseEntity<Issue> issueBook(@RequestParam Long userId, @RequestParam Long bookId) {
+        return ResponseEntity.ok(issueService.issueBook(userId, bookId));
+    }
+
+    @GetMapping("/renew-user-subscription/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<User> renewSubscription(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.renewSubscription(id));
+    }
+}
+
+package com.wecp.library.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class WebSecurityConfigurer {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf().disable()
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/v1/issue-book").permitAll()
+                .requestMatchers("/api/v1/create-user", "/api/v1/renew-user-subscription/**").authenticated()
+                .anyRequest().authenticated()
+            )
+            .formLogin()
+            .and()
+            .httpBasic();
+
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+package com.fcs.wellbeing;
+
+import jakarta.persistence.*;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@SpringBootApplication
+public class EmployeeWellbeingApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(EmployeeWellbeingApplication.class, args);
+    }
+}
+
+@Entity
+@Table(name = "employees")
+class Employee {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long employeeId;
+    private String fullName;
+    private String dateOfBirth;
+    private String email;
+    private String healthStatus;
+
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Program> programs;
+
+    // Getters and Setters
+}
+
+@Entity
+@Table(name = "programs")
+class Program {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long programId;
+    private String programName;
+    private String programDescription;
+    private String startDate;
+    private String endDate;
+
+    @ManyToOne
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
+
+    // Getters and Setters
+}
+
+interface EmployeeRepository extends JpaRepository<Employee, Long> {}
+
+interface ProgramRepository extends JpaRepository<Program, Long> {}
+
+@Service
+class EmployeeService {
+    private final EmployeeRepository employeeRepository;
+
+    public EmployeeService(EmployeeRepository employeeRepository) {
+        this.employeeRepository = employeeRepository;
+    }
+
+    public Employee registerEmployee(Employee employee) {
+        return employeeRepository.save(employee);
+    }
+
+    public void deleteEmployee(Long employeeId) {
+        employeeRepository.deleteById(employeeId);
+    }
+
+    public List<Employee> getAllEmployees() {
+        return employeeRepository.findAll();
+    }
+}
+
+@Service
+class ProgramService {
+    private final ProgramRepository programRepository;
+
+    public ProgramService(ProgramRepository programRepository) {
+        this.programRepository = programRepository;
+    }
+
+    public Program createProgram(Program program) {
+        return programRepository.save(program);
+    }
+
+    public List<Program> getAllPrograms() {
+        return programRepository.findAll();
+    }
+}
+
+@RestController
+@RequestMapping("/employees")
+class EmployeeController {
+    private final EmployeeService employeeService;
+
+    public EmployeeController(EmployeeService employeeService) {
+        this.employeeService = employeeService;
+    }
+
+    @PostMapping
+    public Employee registerEmployee(@RequestBody Employee employee) {
+        return employeeService.registerEmployee(employee);
+    }
+
+    @DeleteMapping("/{employeeId}")
+    public void deleteEmployee(@PathVariable Long employeeId) {
+        employeeService.deleteEmployee(employeeId);
+    }
+
+    @GetMapping
+    public List<Employee> getAllEmployees() {
+        return employeeService.getAllEmployees();
+    }
+}
+
+@RestController
+@RequestMapping("/programs")
+class ProgramController {
+    private final ProgramService programService;
+
+    public ProgramController(ProgramService programService) {
+        this.programService = programService;
+    }
+
+    @PostMapping
+    public Program createProgram(@RequestBody Program program) {
+        return programService.createProgram(program);
+    }
+
+    @GetMapping
+    public List<Program> getAllPrograms() {
+        return programService.getAllPrograms();
+    }
+}
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+package com.site.spring.controller;
+
+import com.site.spring.model.Student;
+import com.site.spring.service.StudentService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/students")
+public class StudentController {
+
+    @Autowired
+    private StudentService studentService;
+
+    @GetMapping
+    public List<Student> getAllStudents() {
+        return studentService.getAllStudents();
+    }
+
+    @PostMapping
+    public ResponseEntity<String> addStudent(@RequestBody Student student) {
+        studentService.addStudent(student);
+        return ResponseEntity.ok("Student added successfully");
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Student> getStudentById(@PathVariable int id) {
+        Student student = studentService.getStudentById(id);
+        return student != null ? ResponseEntity.ok(student) : ResponseEntity.notFound().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<String> updateStudent(@PathVariable int id, @RequestBody Student student) {
+        boolean updated = studentService.updateStudent(id, student);
+        return updated ? ResponseEntity.ok("Student updated successfully") : ResponseEntity.notFound().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteStudent(@PathVariable int id) {
+        boolean deleted = studentService.deleteStudent(id);
+        return deleted ? ResponseEntity.ok("Student deleted successfully") : ResponseEntity.notFound().build();
+    }
+}
+
+package com.student.api.controller;
+
+import com.site.spring.model.Student;
+import org.springframework.jdbc.core.RowMapper;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class StudentRowMapper implements RowMapper<Student> {
+    @Override
+    public Student mapRow(ResultSet rs, int rowNum) throws SQLException {
+        Student student = new Student();
+        student.setId(rs.getInt("id"));
+        student.setName(rs.getString("name"));
+        return student;
+    }
+}
+
+package com.site.spring.model;
+
+public class Student {
+    private int id;
+    private String name;
+
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+}
+
+package com.site.spring.service;
+
+import com.site.spring.model.Student;
+import com.site.spring.repository.StudentRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class StudentService {
+
+    @Autowired
+    private StudentRepository studentRepository;
+
+    public List<Student> getAllStudents() {
+        return studentRepository.getAllStudents();
+    }
+
+    public void addStudent(Student student) {
+        studentRepository.addStudent(student);
+    }
+
+    public Student getStudentById(int id) {
+        return studentRepository.getStudentById(id);
+    }
+
+    public boolean updateStudent(int id, Student student) {
+        return studentRepository.updateStudent(id, student);
+    }
+
+    public boolean deleteStudent(int id) {
+        return studentRepository.deleteStudent(id);
+    }
+}
+
+package com.site.spring.repository;
+
+import com.site.spring.model.Student;
+import com.student.api.controller.StudentRowMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public class StudentRepository {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    public List<Student> getAllStudents() {
+        String sql = "SELECT * FROM students";
+        return jdbcTemplate.query(sql, new StudentRowMapper());
+    }
+
+    public void addStudent(Student student) {
+        String sql = "INSERT INTO students (id, name) VALUES (?, ?)";
+        jdbcTemplate.update(sql, student.getId(), student.getName());
+    }
+
+    public Student getStudentById(int id) {
+        String sql = "SELECT * FROM students WHERE id = ?";
+        return jdbcTemplate.queryForObject(sql, new StudentRowMapper(), id);
+    }
+
+    public boolean updateStudent(int id, Student student) {
+        String sql = "UPDATE students SET name = ? WHERE id = ?";
+        return jdbcTemplate.update(sql, student.getName(), id) > 0;
+    }
+
+    public boolean deleteStudent(int id) {
+        String sql = "DELETE FROM students WHERE id = ?";
+        return jdbcTemplate.update(sql, id) > 0;
+    }
+}
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+// File: LibraryController.java
+package com.wecp.library.controller;
+
+import com.wecp.library.controller.exception.UserNotSubscribedException;
+import com.wecp.library.domain.Issue;
+import com.wecp.library.domain.User;
+import com.wecp.library.repository.IssueRepository;
+import com.wecp.library.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/v1")
+public class LibraryController {
+
+    @Autowired
+    private UserRepository userRepo;
+
+    @Autowired
+    private IssueRepository issueRepo;
+
+    @PostMapping("/issue-book")
+    public ResponseEntity<Issue> issueBook(@RequestBody Issue issue) {
+        Optional<User> userOpt = userRepo.findById(issue.getUser().getId());
+        if (userOpt.isPresent() && userOpt.get().getSubscribed()) {
+            Issue savedIssue = issueRepo.save(issue);
+            return ResponseEntity.ok(savedIssue);
+        } else {
+            throw new UserNotSubscribedException("User subscription has expired");
+        }
+    }
+
+    @PostMapping("/create-user")
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        User savedUser = userRepo.save(user);
+        return ResponseEntity.ok(savedUser);
+    }
+
+    @GetMapping("/renew-user-subscription/{id}")
+    public ResponseEntity<User> renewUserSubscription(@PathVariable Long id) {
+        Optional<User> userOpt = userRepo.findById(id);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setSubscribed(true);
+            userRepo.save(user);
+            return ResponseEntity.ok(user);
+        } else {
+            return ResponseEntity.noContent().build();
+        }
+    }
+}
+
+// File: WebSecurityConfigurer.java
+package com.wecp.library.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+@Configuration
+@EnableWebSecurity
+public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .csrf().disable()
+            .authorizeRequests()
+            .antMatchers("/api/v1/issue-book").permitAll()
+            .antMatchers("/api/v1/create-user", "/api/v1/renew-user-subscription/**").authenticated()
+            .anyRequest().authenticated()
+            .and()
+            .httpBasic();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+// File: UserRepository.java
+package com.wecp.library.repository;
+
+import com.wecp.library.domain.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+}
+
+// File: IssueRepository.java
+package com.wecp.library.repository;
+
+import com.wecp.library.domain.Issue;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface IssueRepository extends JpaRepository<Issue, Long> {
+}
+
+// File: User.java
+package com.wecp.library.domain;
+
+import javax.persistence.*;
+
+@Entity
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String username;
+    private String password;
+    private Boolean subscribed;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public Boolean getSubscribed() { return subscribed; }
+    public void setSubscribed(Boolean subscribed) { this.subscribed = subscribed; }
+}
+
+// File: Issue.java
+package com.wecp.library.domain;
+
+import javax.persistence.*;
+
+@Entity
+public class Issue {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String bookName;
+
+    @ManyToOne
+    private User user;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getBookName() { return bookName; }
+    public void setBookName(String bookName) { this.bookName = bookName; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+}
+
+// File: UserNotSubscribedException.java
+package com.wecp.library.controller.exception;
+
+public class UserNotSubscribedException extends RuntimeException {
+    public UserNotSubscribedException(String message) {
+        super(message);
+    }
+}
+# File: application.properties
+spring.datasource.url=jdbc:mysql://localhost:3306/library_db
+spring.datasource.username=root
+spring.datasource.password=your_password
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.security.user.name=admin
+spring.security.user.password=admin123
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+package com.ust.entity;
+
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+public class Policy {
+
+   // implement entity
+   @Id
+   @GeneratedValue(strategy = GenerationType.IDENTITY)
+   private Long policyId;
+
+   @Column(unique = true)
+   private String policyNumber;
+
+   private String type;
+
+   private double coverageAmount;
+
+   private double premium;
+
+   private String holderName;
+
+   private String holderAddress;
+
+   private String holderContactNumber;
+
+   private String holderEmail;
+
+   @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL)
+   @JsonIgnore(value = true)
+   private List<Claim> claims = new ArrayList<>();
+
+   public Policy() {
+   }
+
+   public Policy(String policyNumber, String type, double coverageAmount, double premium, String holderName,
+         String holderAddress, String holderContactNumber, String holderEmail, List<Claim> claims) {
+      this.policyNumber = policyNumber;
+      this.type = type;
+      this.coverageAmount = coverageAmount;
+      this.premium = premium;
+      this.holderName = holderName;
+      this.holderAddress = holderAddress;
+      this.holderContactNumber = holderContactNumber;
+      this.holderEmail = holderEmail;
+   }
+
+   public Policy(Long policyId, String policyNumber, String type, double coverageAmount, double premium,
+         String holderName, String holderAddress, String holderContactNumber, String holderEmail, List<Claim> claims) {
+      this.policyId = policyId;
+      this.policyNumber = policyNumber;
+      this.type = type;
+      this.coverageAmount = coverageAmount;
+      this.premium = premium;
+      this.holderName = holderName;
+      this.holderAddress = holderAddress;
+      this.holderContactNumber = holderContactNumber;
+      this.holderEmail = holderEmail;
+   }
+
+   public Long getPolicyId() {
+      return policyId;
+   }
+
+   public void setPolicyId(Long policyId) {
+      this.policyId = policyId;
+   }
+
+   public String getPolicyNumber() {
+      return policyNumber;
+   }
+
+   public void setPolicyNumber(String policyNumber) {
+      this.policyNumber = policyNumber;
+   }
+
+   public String getType() {
+      return type;
+   }
+
+   public void setType(String type) {
+      this.type = type;
+   }
+
+   public double getCoverageAmount() {
+      return coverageAmount;
+   }
+
+   public void setCoverageAmount(double coverageAmount) {
+      this.coverageAmount = coverageAmount;
+   }
+
+   public double getPremium() {
+      return premium;
+   }
+
+   public void setPremium(double premium) {
+      this.premium = premium;
+   }
+
+   public String getHolderName() {
+      return holderName;
+   }
+
+   public void setHolderName(String holderName) {
+      this.holderName = holderName;
+   }
+
+   public String getHolderAddress() {
+      return holderAddress;
+   }
+
+   public void setHolderAddress(String holderAddress) {
+      this.holderAddress = holderAddress;
+   }
+
+   public String getHolderContactNumber() {
+      return holderContactNumber;
+   }
+
+   public void setHolderContactNumber(String holderContactNumber) {
+      this.holderContactNumber = holderContactNumber;
+   }
+
+   public String getHolderEmail() {
+      return holderEmail;
+   }
+
+   public void setHolderEmail(String holderEmail) {
+      this.holderEmail = holderEmail;
+   }
+
+   public List<Claim> getClaims() {
+      return claims;
+   }
+
+   public void setClaims(List<Claim> claims) {
+      this.claims = claims;
+   }
+
+   
+}
+
+package com.ust.entity;
+
+
+import jakarta.persistence.*;
+
+
+import java.util.Date;
+
+@Entity
+public class Claim {
+    // implement entity
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long claimId;
+
+    @Column(unique = true)
+    private String claimNumber;
+
+    private Date claimDate;
+    private double claimAmount;
+    private String description;
+
+    @ManyToOne
+    @JoinColumn(name = "policy_id")
+    private Policy policy;
+
+    public Claim() {
+    }
+
+    public Claim(String claimNumber, Date claimDate, double claimAmount, String description, Policy policy) {
+        this.claimNumber = claimNumber;
+        this.claimDate = claimDate;
+        this.claimAmount = claimAmount;
+        this.description = description;
+        this.policy = policy;
+    }
+
+    public Claim(Long claimId, String claimNumber, Date claimDate, double claimAmount, String description,
+            Policy policy) {
+        this.claimId = claimId;
+        this.claimNumber = claimNumber;
+        this.claimDate = claimDate;
+        this.claimAmount = claimAmount;
+        this.description = description;
+        this.policy = policy;
+    }
+
+    public Long getClaimId() {
+        return claimId;
+    }
+
+    public void setClaimId(Long claimId) {
+        this.claimId = claimId;
+    }
+
+    public String getClaimNumber() {
+        return claimNumber;
+    }
+
+    public void setClaimNumber(String claimNumber) {
+        this.claimNumber = claimNumber;
+    }
+
+    public Date getClaimDate() {
+        return claimDate;
+    }
+
+    public void setClaimDate(Date claimDate) {
+        this.claimDate = claimDate;
+    }
+
+    public double getClaimAmount() {
+        return claimAmount;
+    }
+
+    public void setClaimAmount(double claimAmount) {
+        this.claimAmount = claimAmount;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Policy getPolicy() {
+        return policy;
+    }
+
+    public void setPolicy(Policy policy) {
+        this.policy = policy;
+    }
+
+}
+
+package com.ust.controller;
+
+
+import com.ust.entity.Claim;
+import com.ust.service.ClaimService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/claims")
+public class ClaimController {
+
+    @Autowired
+    private ClaimService claimService;
+
+    @PostMapping
+    public Claim fileClaim(@RequestBody Claim claim) {
+       // file a claim
+       return claimService.fileClaim(claim);
+    }
+
+
+    @GetMapping
+    public List<Claim> getAllClaims() {
+      // get all claims
+      return claimService.getAllClaims();
+    }
+}
+
+
+
+package com.ust.controller;
+
+
+import com.ust.entity.Policy;
+import com.ust.service.PolicyService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/policies")
+public class PolicyController {
+
+    @Autowired
+    private PolicyService policyService;
+
+
+    @PostMapping
+    public Policy addPolicy(@RequestBody Policy policy) {
+        // add policy
+        return policyService.addPolicy(policy);
+    }
+
+
+    @DeleteMapping("/{policyId}")
+    public void deletePolicy(@PathVariable Long policyId) {
+       // delete policy
+       policyService.deletePolicy(policyId);
+    }
+
+
+    @GetMapping
+    public List<Policy> getAllPolicies() {
+        // get all policies
+        return policyService.getAllPolicies();
+    }
+}
+
+
+package com.ust.service;
+
+
+import com.ust.entity.Claim;
+import com.ust.repository.ClaimRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class ClaimService {
+
+    @Autowired
+    private ClaimRepository claimRepository;
+
+    public Claim fileClaim(Claim claim) {
+        // add claim to database
+        return claimRepository.save(claim);
+    }
+
+    public List<Claim> getAllClaims() {
+       // get all claims from database
+       return claimRepository.findAll();
+    }
+}
+
+package com.ust.service;
+
+
+import com.ust.entity.Policy;
+import com.ust.repository.PolicyRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class PolicyService {
+
+   @Autowired
+    private PolicyRepository policyRepository;
+
+    public Policy addPolicy(Policy policy) {
+       // add policy to database
+       return policyRepository.save(policy);
+    }
+
+    public void deletePolicy(Long policyId) {
+       // delete policy from database
+       policyRepository.deleteById(policyId);
+    }
+
+    public List<Policy> getAllPolicies() {
+      // get all policies from database
+      return policyRepository.findAll();
+    }
+}
+
+package com.ust.repository;
+
+
+import com.ust.entity.Claim;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ClaimRepository extends JpaRepository<Claim, Long>  {
+    // extent jpa repository
+}
+
+package com.ust.repository;
+
+import com.ust.entity.Policy;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface PolicyRepository extends JpaRepository<Policy, Long> {
+    // extends JpaRepository
+}
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
