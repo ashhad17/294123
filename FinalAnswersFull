@@ -1,0 +1,3003 @@
+---------------------------------------------
+Angular 1-Student Instructor Authentication
+---------------------------------------------
+
+#app-routing.module.ts
+
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { LoginComponent } from './login/login.component';
+import { StudentDashboardComponent } from './student-dashboard/student-dashboard.component';
+import { InstructorDashboardComponent } from './instructor-dashboard/instructor-dashboard.component';
+import { AuthGuard } from './auth.guard';
+
+const routes: Routes = [
+  { path: '', redirectTo: '/login', pathMatch: 'full' },
+  { path: 'login', component: LoginComponent },
+  { 
+    path: 'student-dashboard',
+    component: StudentDashboardComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'student' }
+  },
+  {
+    path: 'instructor-dashboard',
+    component: InstructorDashboardComponent,
+    canActivate: [AuthGuard],
+    data: { role: 'instructor' }
+  }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule {}
+
+``````````````````````````````````````````````````````````
+#auth.guard.ts
+import { Injectable } from '@angular/core';
+import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
+import { AuthService } from './auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+  constructor(private authService: AuthService, private router: Router) {}
+
+  canActivate(next: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
+    if (!this.authService.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return false;
+    }
+
+    const requiredRole = next.data['role'];
+    if (requiredRole) {
+      const userRole = this.authService.getUserRole();
+      if (userRole !== requiredRole) {
+        this.router.navigate(['/']);
+        return false;
+      }
+    }
+
+    return true;
+  }
+}
+
+``````````````````````````````````````````````````````````
+#auth.service.ts
+
+import { Injectable } from '@angular/core';
+import { Router } from '@angular/router';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private isAuthenticated = false;
+  private userRole: 'student' | 'instructor' | null = null;
+
+  constructor(private router: Router) {}
+
+  login(username: string, password: string): boolean {
+    if (username === 'student' && password === 'password') {
+      this.isAuthenticated = true;
+      this.userRole = 'student';
+      return true;
+    } else if (username === 'instructor' && password === 'password') {
+      this.isAuthenticated = true;
+      this.userRole = 'instructor';
+      return true;
+    }
+    return false;
+  }
+
+  logout(): void {
+    this.isAuthenticated = false;
+    this.userRole = null;
+    this.router.navigate(['/login']);
+  }
+
+  isLoggedIn(): boolean {
+    return this.isAuthenticated;
+  }
+
+  getUserRole(): 'student' | 'instructor' | null {
+    return this.userRole;
+  }
+}
+``````````````````````````````````````````````````````````
+#instructor-dashboard.component.ts
+import { Component } from '@angular/core';
+@Component({
+  selector: 'app-instructor-dashboard',
+  templateUrl: './instructor-dashboard.component.html',
+  styleUrls: ['./instructor-dashboard.component.css']
+})
+export class InstructorDashboardComponent {}
+``````````````````````````````````````````````````````````
+#login.component.html
+<div class="login-container">
+  <h2>Login</h2>
+  <form (ngSubmit)="login()">
+    <input type="text" [(ngModel)]="username" name="username" placeholder="Username" required />
+    <input type="password" [(ngModel)]="password" name="password" placeholder="Password" required />
+    <button type="submit">Login</button>
+  </form>
+  <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+</div>
+``````````````````````````````````````````````````````````
+#login.component.ts
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../auth.service';
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.css']
+})
+export class LoginComponent {
+  username: string = '';
+  password: string = '';
+  errorMessage: string = '';
+
+  constructor(private authService: AuthService, private router: Router) {}
+
+  login() {
+    if (this.authService.login(this.username, this.password)) {
+      const role = this.authService.getUserRole();
+      if (role === 'student') {
+        this.router.navigate(['/student-dashboard']);
+      } else if (role === 'instructor') {
+        this.router.navigate(['/instructor-dashboard']);
+      }
+    } else {
+      this.errorMessage = 'Invalid username or password';
+    }
+  }
+}
+``````````````````````````````````````````````````````````
+#student-dashboard.component.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-student-dashboard',
+  templateUrl: './student-dashboard.component.html',
+  styleUrls: ['./student-dashboard.component.css']
+})
+export class StudentDashboardComponent {}
+``````````````````````````````````````````````````````````
+
+---------------------------------------------
+Angular 2-Voting elegibility
+---------------------------------------------
+#app.module.ts
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';
+
+import { AppComponent } from './app.component';
+import { EligibilityComponent } from './eligibility/eligibility.component';
+
+@NgModule({
+  declarations: [AppComponent, EligibilityComponent],
+  imports: [BrowserModule, FormsModule],
+  providers: [],
+  bootstrap: [AppComponent],
+})
+export class AppModule {}
+``````````````````````````````````````````````````````````
+#elegibility.component.html
+<h2>Voting Eligibility Checker</h2>
+<input type="number" [(ngModel)]="age" placeholder="Enter your age" />
+<button (click)="checkEligibility()">Check</button>
+<p>{{ message }}</p>
+
+<hr>
+
+<h2>Employee List</h2>
+<table border="1">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Department</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let emp of employees">
+      <td>{{ emp.id }}</td>
+      <td>{{ emp.name }}</td>
+      <td>{{ emp.department }}</td>
+    </tr>
+  </tbody>
+</table>
+``````````````````````````````````````````````````````````
+#elegibility.component.ts
+import { Component } from '@angular/core';
+
+class Employee {
+  constructor(
+    public id: number,
+    public name: string,
+    public department: string
+  ) {}
+}
+
+@Component({
+  selector: 'app-eligibility',
+  templateUrl: './eligibility.component.html',
+})
+export class EligibilityComponent {
+  age: number | null = null;
+  message: string = '';
+
+  employees: Employee[] = [
+    new Employee(1, 'Ali Khan', 'HR'),
+    new Employee(2, 'Fatima Noor', 'IT'),
+    new Employee(3, 'Ahmed Raza', 'Finance'),
+  ];
+
+  checkEligibility() {
+    if (this.age !== null) {
+      this.message = this.age >= 18 ? 'eligible to vote' : 'not eligible to vote';
+    } else {
+      this.message = '';
+    }
+  }
+}
+``````````````````````````````````````````````````````````
+---------------------------------------------
+Angular 3-IMPLEMENT AUTHENTICATION FOR ADMIN AND USER LOGIN
+---------------------------------------------
+#admin-dashboard.conponent.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-admin-dashboard',
+  template: `<h2>Welcome, Admin!</h2>`
+})
+export class AdminDashboardComponent {}
+``````````````````````````````````````````````````````````
+#app-routing.module.ts
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { LoginComponent } from './login/login.component';
+import { AdminDashboardComponent } from './admin-dashboard/admin-dashboard.component';
+import { UserDashboardComponent } from './user-dashboard/user-dashboard.component';
+import { UnauthorizedComponent } from './unauthorized/unauthorized.component';
+import { AuthGuard } from './services/auth.guard';
+
+const routes: Routes = [
+  { path: 'login', component: LoginComponent },
+  { path: 'admin', component: AdminDashboardComponent, canActivate: [AuthGuard], data: { role: 'admin' } },
+  { path: 'user', component: UserDashboardComponent, canActivate: [AuthGuard], data: { role: 'user' } },
+  { path: 'unauthorized', component: UnauthorizedComponent },
+  { path: '', redirectTo: '/login', pathMatch: 'full' },
+  { path: '**', redirectTo: '/login' }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule { }
+``````````````````````````````````````````````````````````
+#auth.guard.ts
+import { Injectable } from '@angular/core';
+import { ActivatedRouteSnapshot, CanActivate, Router, RouterStateSnapshot } from '@angular/router';
+import { AuthService } from './auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+
+  constructor(private authService: AuthService, private router: Router) {}
+
+  canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
+    const expectedRole = route.data['role'];
+
+    if (!this.authService.isLoggedIn) {
+      this.router.navigate(['/login']);
+      return false;
+    }
+
+    if ((expectedRole === 'admin' && !this.authService.isAdmin) ||
+        (expectedRole === 'user' && this.authService.isAdmin)) {
+      this.router.navigate(['/unauthorized']);
+      return false;
+    }
+
+    return true;
+  }
+}
+``````````````````````````````````````````````````````````
+#auth.service.ts
+import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private readonly AUTH_TOKEN_KEY = 'auth_token';
+  private readonly IS_ADMIN_KEY = 'is_admin';
+  private readonly USERNAME_KEY = 'username';
+
+  constructor() {}
+
+  get isLoggedIn(): boolean {
+    return localStorage.getItem(this.AUTH_TOKEN_KEY) === 'true';
+  }
+
+  set isLoggedIn(value: boolean) {
+    localStorage.setItem(this.AUTH_TOKEN_KEY, value.toString());
+  }
+
+  get isAdmin(): boolean {
+    return localStorage.getItem(this.IS_ADMIN_KEY) === 'true';
+  }
+
+  set SetUser(value: string) {
+    localStorage.setItem(this.USERNAME_KEY, value);
+    localStorage.setItem(this.AUTH_TOKEN_KEY, 'true');
+    localStorage.setItem(this.IS_ADMIN_KEY, (value === 'admin').toString());
+  }
+
+  login(username: string, password: string): boolean {
+    if ((username === 'admin' && password === 'admin') || (username === 'user' && password === 'user')) {
+      this.isLoggedIn = true;
+      this.SetUser = username;
+      return true;
+    }
+    return false;
+  }
+
+  logout(): void {
+    localStorage.removeItem(this.AUTH_TOKEN_KEY);
+    localStorage.removeItem(this.IS_ADMIN_KEY);
+    localStorage.removeItem(this.USERNAME_KEY);
+  }
+}
+``````````````````````````````````````````````````````````
+#login.component.ts
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.scss']
+})
+export class LoginComponent implements OnInit {
+  itemForm: FormGroup;
+  loginFailed = false;
+
+  constructor(private authService: AuthService, private formBuilder: FormBuilder, private router: Router) {
+    this.itemForm = this.formBuilder.group({
+      username: ['', Validators.required],
+      password: ['', Validators.required]
+    });
+  }
+
+  ngOnInit(): void {}
+
+  onRegister() {
+    if (this.itemForm.valid) {
+      const { username, password } = this.itemForm.value;
+      const success = this.authService.login(username, password);
+      if (success) {
+        this.loginFailed = false;
+        this.authService.isAdmin ? this.router.navigate(['/admin']) : this.router.navigate(['/user']);
+      } else {
+        this.loginFailed = true;
+        this.itemForm.markAllAsTouched();
+      }
+    } else {
+      this.itemForm.markAllAsTouched();
+    }
+  }
+}
+``````````````````````````````````````````````````````````
+#unauthorized.component.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-unauthorized',
+  template: `<h2>Unauthorized Access</h2>`
+})
+export class UnauthorizedComponent {}
+``````````````````````````````````````````````````````````
+#user-dashboard.component.ts
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-user-dashboard',
+  template: `<h2>Welcome, User!</h2>`
+})
+export class UserDashboardComponent {}
+``````````````````````````````````````````````````````````
+---------------------------------------------
+Angular 4-Team players
+---------------------------------------------
+``````````````````````````````````````````````````````````
+#player.model.ts
+// src/app/players/player.model.ts
+export class Player {
+    constructor(
+      public id: number,
+      public name: string,
+      /** e.g. 'Batsman' | 'Bowler' | 'Wicket Keeper' */
+      public description: string
+    ) {}
+  }
+  
+``````````````````````````````````````````````````````````
+#player.service.ts
+import { Player } from './player.model';
+import { Injectable } from '@angular/core';
+import { Subject } from 'rxjs';
+
+@Injectable()
+export class PlayerService {
+  playersChanged = new Subject<Player[]>();
+  count: number = 7;
+
+  private players: Player[] = [
+    new Player(1, 'M S Dhoni', 'Wicket Keeper'),
+    new Player(2, 'Virat Kohli', 'Batsman'),
+    new Player(3, 'Jasprit Bumrah', 'Bowler'),
+    new Player(4, 'Rohit Sharma', 'Batsman'),
+    new Player(5, 'Rishabh Pant', 'Wicket Keeper'),
+    new Player(6, 'T. Natarajan', 'Bowler'),
+    new Player(7, 'R Ashwin', 'Bowler'),
+  ];
+
+  getPlayers() {
+    return this.players.slice();
+  }
+
+  generateID() {
+    this.count = this.count + 1;
+    return this.count;
+  }
+
+  // Get the player by id
+  getPlayer(id: number) {
+    return this.players.find(player => player.id === id);
+  }
+
+  // Add a new player
+  addPlayer(player: Player) {
+    player.id = this.generateID();
+    this.players.push(player);
+    this.playersChanged.next(this.players.slice());
+  }
+
+  // Update the details of the player with the given id
+  updatePlayer(index: number, newPlayer: Player) {
+    const playerIndex = this.players.findIndex(player => player.id === index);
+    if (playerIndex !== -1) {
+      this.players[playerIndex] = newPlayer;
+      this.playersChanged.next(this.players.slice());
+    }
+  }
+
+  // Delete the player at the given id
+  deletePlayer(index: number) {
+    const playerIndex = this.players.findIndex(player => player.id === index);
+    if (playerIndex !== -1) {
+      this.players.splice(playerIndex, 1);
+      this.playersChanged.next(this.players.slice());
+    }
+  }
+}
+
+``````````````````````````````````````````````````````````
+#team.model.ts
+// src/app/team/team.model.ts
+import { Player } from './player.model';
+
+/**
+ * A Team is just a collection of Players;
+ * you can extend this later with an id, name, etc.
+ */
+export class Team {
+  constructor(
+    /** the players currently in this team */
+    public players: Player[] = []
+  ) {}
+}
+``````````````````````````````````````````````````````````
+#team.service.ts
+import { Player } from './player.model';
+import { EventEmitter } from '@angular/core';
+
+export class TeamService {
+  teamChanged = new EventEmitter<Player[]>();
+  playerId: number;
+
+  private team: Player[] = [];
+
+  getTeam() {
+    return this.team.slice();
+  }
+
+  // Edit a player of the given id
+  editPlayer(id: number, nwPlayer: Player) {
+    const playerIndex = this.team.findIndex(player => player.id === id);
+    if (playerIndex !== -1) {
+      this.team[playerIndex] = nwPlayer;
+      this.teamChanged.emit(this.team.slice());
+    }
+  }
+
+  // Add a player to the team
+  addPlayer(player: Player) {
+    const exists = this.team.find(p => p.id === player.id);
+    if (exists) {
+      alert('This Player already exists in your team !!');
+    } else {
+      this.team.push(player);
+      this.teamChanged.emit(this.team.slice());
+    }
+  }
+
+  // Delete a player from the team
+  deletePlayer(id: number) {
+    const playerIndex = this.team.findIndex(player => player.id === id);
+    if (playerIndex !== -1) {
+      this.team.splice(playerIndex, 1);
+      this.teamChanged.emit(this.team.slice());
+    }
+  }
+
+  // Get the status of the team composition
+  getStatus() {
+    const batsmen = this.team.filter(player => player.description === 'Batsman').length;
+    const bowlers = this.team.filter(player => player.description === 'Bowler').length;
+    const wicketKeepers = this.team.filter(player => player.description === 'Wicket Keeper').length;
+
+    const status: string[] = [];
+    if (batsmen !== 2) {
+      status.push('You do not have the required number of batsmen in your team');
+    }
+    if (bowlers !== 2) {
+      status.push('You do not have the required number of bowler in your team');
+    }
+    if (wicketKeepers !== 1) {
+      status.push('You do not have the required number of wicket-keeper in your team');
+    }
+
+    return status;
+  }
+}
+
+``````````````````````````````````````````````````````````
+---------------------------------------------
+React 1-Patient
+---------------------------------------------
+
+#patientInformation.js
+import React, { useEffect, useState } from 'react';
+import { getPatients } from './PatientService';
+
+export const PatientInformation = ({ patientID }) => {
+  const [patient, setPatient] = useState(null);
+
+  useEffect(() => {
+    const fetchPatient = async () => {
+      const patients = await getPatients();
+      const found = patients.find((p) => p.patientID === patientID);
+      if (found) setPatient(found);
+    };
+
+    fetchPatient();
+  }, [patientID]);
+
+  if (!patient) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <p>Patient ID: {patient.patientID}</p>
+      <p>Name: {patient.name}</p>
+      <p>Age: {patient.age}</p>
+      <p>Gender: {patient.gender}</p>
+      <p>Condition: {patient.condition}</p>
+      <p>Last Visit: {patient.lastVisit}</p>
+    </div>
+  );
+};
+``````````````````````````````````````````````````````````
+#patientRegistrationForm.js
+import React, { useState } from 'react';
+import { addPatient } from './PatientService';
+const PatientRegistrationForm = ({ onRegister }) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    age: '',
+    gender: '',
+    condition: '',
+    lastVisit: '',
+  });
+
+  const [errors, setErrors] = useState({});
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.name) newErrors.name = 'Name is required';
+    if (!formData.age) newErrors.age = 'Age is required';
+    if (!formData.gender) newErrors.gender = 'Gender is required';
+    if (!formData.condition) newErrors.condition = 'Condition is required';
+    if (!formData.lastVisit) newErrors.lastVisit = 'Last Visit is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    await addPatient(formData);
+    if (onRegister) onRegister(formData);
+
+    setFormData({ name: '', age: '', gender: '', condition: '', lastVisit: '' });
+    setErrors({});
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input placeholder="Name" name="name" value={formData.name} onChange={handleChange} />
+      {errors.name && <div>{errors.name}</div>}
+
+      <input placeholder="Age" name="age" value={formData.age} onChange={handleChange} />
+      {errors.age && <div>{errors.age}</div>}
+
+      <select name="gender" value={formData.gender} onChange={handleChange}>
+        <option value="">Select Gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+      </select>
+      {errors.gender && <div>{errors.gender}</div>}
+
+      <input placeholder="Condition" name="condition" value={formData.condition} onChange={handleChange} />
+      {errors.condition && <div>{errors.condition}</div>}
+
+      <input placeholder="Last Visit (YYYY-MM-DD)" name="lastVisit" value={formData.lastVisit} onChange={handleChange} />
+      {errors.lastVisit && <div>{errors.lastVisit}</div>}
+
+      <button type="submit">Register Patient</button>
+    </form>
+  );
+};
+export default PatientRegistrationForm;
+``````````````````````````````````````````````````````````
+#patientService.js
+let mockPatients = [];
+export const addPatient = async (patient) => {
+  const id = `P${(mockPatients.length + 1).toString().padStart(3, '0')}`;
+  mockPatients.push({ ...patient, patientID: id });
+};
+
+export const getPatients = async () => {
+  return [...mockPatients];
+};
+``````````````````````````````````````````````````````````
+---------------------------------------------
+React 2-Loan
+---------------------------------------------
+#LoanForm.js
+
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import './App.css';
+
+const LoanForm = () => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    fullName: "",
+    loanAmount: "",
+    purpose: "House",
+    tenure: "",
+  });
+  const [errors, setErrors] = useState({});
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const validationErrors = {};
+
+    if (!formData.fullName.trim()) {
+      validationErrors.fullName = "Full Name is required";
+    }
+
+    const amount = parseFloat(formData.loanAmount);
+    if (isNaN(amount) || amount < 1000 || amount > 1000000) {
+      validationErrors.loanAmount = "Loan Amount must be between 1000 and 1000000";
+    }
+
+    const tenure = parseInt(formData.tenure);
+    if (isNaN(tenure) || tenure < 1 || tenure > 30) {
+      validationErrors.tenure = "Tenure must be between 1 and 30 years";
+    }
+
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length === 0) {
+      navigate("/welcome");
+    } else {
+      navigate("/error");
+    }
+  };
+
+  return (
+    <div>
+      <h1 className="header">Bank Loan Form</h1>
+      <form onSubmit={handleSubmit} className="form">
+        <div>
+          <label>Full Name:</label>
+          <input
+            type="text"
+            name="fullName"
+            value={formData.fullName}
+            onChange={handleChange}
+          />
+          {errors.fullName && <p className="error">{errors.fullName}</p>}
+        </div>
+
+        <div>
+          <label>Loan Amount:</label>
+          <input
+            type="number"
+            name="loanAmount"
+            value={formData.loanAmount}
+            onChange={handleChange}
+          />
+          {errors.loanAmount && <p className="error">{errors.loanAmount}</p>}
+        </div>
+
+        <div>
+          <label>Purpose of Loan:</label>
+          <select
+            name="purpose"
+            value={formData.purpose}
+            onChange={handleChange}
+          >
+            <option value="House">House</option>
+            <option value="Car">Car</option>
+            <option value="Personal">Personal</option>
+            <option value="Education">Education</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Tenure (in years):</label>
+          <input
+            type="number"
+            name="tenure"
+            value={formData.tenure}
+            onChange={handleChange}
+          />
+          {errors.tenure && <p className="error">{errors.tenure}</p>}
+        </div>
+
+        <button type="submit">Apply</button>
+      </form>
+    </div>
+  );
+};
+
+export default LoanForm;
+``````````````````````````````````````````````````````````
+#app.js
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import LoanForm from './LoanForm';
+import WelcomePage from './welcomepage';
+import ErrorPage from './errorpage';
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<LoanForm />} />
+        <Route path="/welcome" element={<WelcomePage />} />
+        <Route path="/error" element={<ErrorPage />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
+``````````````````````````````````````````````````````````
+#errorpage.js
+import React from 'react';
+
+const ErrorPage = () => {
+  return (
+    <div>
+      <h1>Error: Please check your loan application form for valid entries.</h1>
+    </div>
+  );
+};
+
+export default ErrorPage
+``````````````````````````````````````````````````````````
+#welcomepage.js
+import React from 'react';
+
+const WelcomePage = () => {
+  return (
+    <div>
+      <h1>Welcome! Your loan application has been submitted successfully.</h1>
+    </div>
+  );
+};
+
+export default WelcomePage;
+
+``````````````````````````````````````````````````````````
+---------------------------------------------
+React 3-Dashboard Report
+---------------------------------------------
+#dashboard.js
+import "./Dashboard.css";
+
+function Dashboard() {
+  const [totalSales, setTotalSales] = useState(0);
+  const [totalCashSales, setTotalCashSales] = useState(0);
+  const [totalCreditSales, setTotalCreditSales] = useState(0);
+  const [mostSalesBuyer, setMostSalesBuyer] = useState({ buyerName: "", saleTotal: 0 });
+
+  useEffect(() => {
+    const fetchSales = async () => {
+      const sales = await getSalesData();
+      setTotalSales(calculateTotalSales(sales));
+      setTotalCashSales(calculateTotalCashSale(sales));
+      setTotalCreditSales(calculateTotalCreditSale(sales));
+      setMostSalesBuyer(calculateBuyerWithMostSale(sales));
+    };
+
+    fetchSales();
+  }, []);
+
+  return (
+    <div className="dashboard">
+      <div className="card">
+        <h2>Total Sales</h2>
+        <p>{totalSales}</p>
+      </div>
+      <div className="card">
+        <h2>Total Cash Sales</h2>
+        <p>{totalCashSales}</p>
+      </div>
+      <div className="card">
+        <h2>Total Credit Sales</h2>
+        <p>{totalCreditSales}</p>
+      </div>
+      <div className="card">
+        <h2>Buyer with Most Sales</h2>
+        <p>{mostSalesBuyer.buyerName}</p>
+        <p>{mostSalesBuyer.saleTotal}</p>
+      </div>
+    </div>
+  );
+}
+
+export default Dashboard;
+``````````````````````````````````````````````````````````
+#report.js
+import axios from "axios";
+
+export const getSalesData = async () => {
+  let { data } = await axios.get(`/sales.json`);
+  return data;
+};
+
+export const calculateTotalSales = (sales) => {
+  return sales.reduce((total, sale) => total + sale.saleTotal, 0);
+};
+
+export const calculateTotalCashSale = (sales) => {
+  return sales
+    .filter((sale) => !sale.creditCard)
+    .reduce((total, sale) => total + sale.saleTotal, 0);
+};
+
+export const calculateTotalCreditSale = (sales) => {
+  return sales
+    .filter((sale) => sale.creditCard)
+    .reduce((total, sale) => total + sale.saleTotal, 0);
+};
+
+export const calculateBuyerWithMostSale = (sales) => {
+  const buyerSales = sales.reduce((acc, sale) => {
+    acc[sale.buyerName] = (acc[sale.buyerName] || 0) + sale.saleTotal;
+    return acc;
+  }, {});
+
+  const topBuyer = Object.entries(buyerSales).reduce((max, [buyer, total]) => {
+    return total > max.saleTotal ? { buyerName: buyer, saleTotal: total } : max;
+  }, { buyerName: "", saleTotal: 0 });
+
+  return topBuyer;
+};
+``````````````````````````````````````````````````````````
+---------------------------------------------
+React 4-Location
+---------------------------------------------
+Location
+
+import { useEffect } from 'react';
+ 
+const LocationMarker = ({ position, map, marker, onRemove }) => {
+  useEffect(() => {
+    if (!marker) return;
+ 
+    const handleClick = () => {
+      if (onRemove) onRemove();
+      marker.setMap(null); // remove from map
+    };
+ 
+    marker.addListener("click", handleClick);
+ 
+    // Cleanup on unmount
+    return () => {
+      window.google.maps.event.clearListeners(marker, "click");
+    };
+  }, [map, position, marker, onRemove]);
+ 
+  return null;
+};
+ 
+export default LocationMarker;
+--------------------------------------------------------------------------------------------------------------
+
+
+import React, { useState, useEffect, useCallback } from "react";
+import { Map, GoogleApiWrapper } from "google-maps-react";
+import LocationMarker from "./LocationMarker";
+ 
+export const App = ({ google }) => {
+  const [properties, setProperties] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [mapCenter, setMapCenter] = useState({ lat: 31.5497, lng: 74.3436 });
+  const [map, setMap] = useState(null);
+  const [markers, setMarkers] = useState([]);
+ 
+  const handleMapReady = (mapProps, map) => {
+    setMap(map);
+    setMapCenter(map.center.toJSON());
+  };
+ 
+  const handleSearch = () => {
+    if (!google || !google.maps) return;
+ 
+    const service = new google.maps.places.PlacesService(map);
+    service.textSearch({ query: searchQuery }, (results, status) => {
+      if (status === "OK") {
+        setSearchResults(results);
+      }
+    });
+  };
+ 
+  const handleAddLocation = (result) => {
+    const location = result.geometry.location;
+    const position = {
+      lat: location.lat(),
+      lng: location.lng(),
+    };
+ 
+    const marker = new google.maps.Marker({
+      position,
+      map,
+      title: result.name,
+    });
+ 
+    setMarkers((prev) => [...prev, marker]);
+    setProperties((prev) => [...prev, { name: result.name, position }]);
+    setSearchResults([]);
+    setSearchQuery("");
+  };
+ 
+  const handleRemoveLocation = useCallback(
+    (index) => {
+      const newProperties = [...properties];
+      newProperties.splice(index, 1);
+      setProperties(newProperties);
+      removeMarker(index);
+    },
+    [properties]
+  );
+ 
+  const removeMarker = useCallback(
+    (index) => {
+      if (index < 0 || index >= markers.length) return;
+ 
+      const marker = markers[index];
+      marker.setMap(null);
+      const newMarkers = [...markers];
+      newMarkers.splice(index, 1);
+      setMarkers(newMarkers);
+    },
+    [markers]
+  );
+ 
+  const handleMapClick = (mapProps, map, clickEvent) => {
+    const geocoder = new google.maps.Geocoder();
+    const latLng = {
+      lat: clickEvent.latLng.lat(),
+      lng: clickEvent.latLng.lng(),
+    };
+ 
+    geocoder.geocode({ location: latLng }, (results, status) => {
+      if (status === "OK" && results[0]) {
+        const marker = new google.maps.Marker({
+          position: latLng,
+          map,
+          title: results[0].formatted_address,
+        });
+ 
+        setMarkers((prev) => [...prev, marker]);
+        setProperties((prev) => [
+          ...prev,
+          { name: results[0].formatted_address, position: latLng },
+        ]);
+      }
+    });
+  };
+ 
+  useEffect(() => {
+    if (properties.length > 0) {
+      setMapCenter(properties[properties.length - 1].position);
+    }
+  }, [properties]);
+ 
+  return (
+
+
+
+
+
+<div style={{ display: "flex" }}>
+      <div style={{ flex: "1 1 50%", padding: "10px" }}>
+        {/* ✅ label for accessibility test */}
+        <label htmlFor="searchInput">Enter location</label>
+        <input
+          id="searchInput"
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search location"
+        />
+        <button onClick={handleSearch}>Search</button>
+
+        
+
+        <ul>
+          {searchResults.map((result, index) => (
+            <li key={index}>
+              {result.name}
+              <button onClick={() => handleAddLocation(result)}>Add</button>
+            </li>
+          ))}
+        </ul>
+
+        <h3>Saved Locations</h3>
+        <ul>
+          {properties.map((prop, index) => (
+            <li key={index}>
+              {prop.name}
+              <button onClick={() => handleRemoveLocation(index)}>Remove</button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div style={{ flex: "1 1 50%", height: "500px" }}>
+        <Map
+          google={google}
+          zoom={5}
+          initialCenter={mapCenter}
+          onReady={handleMapReady}
+          onClick={handleMapClick}
+        >
+          {properties.map((prop, index) => (
+            <LocationMarker
+              key={index}
+              position={prop.position}
+              map={map}
+              marker={markers[index]}
+              onRemove={() => handleRemoveLocation(index)}
+            />
+          ))}
+        </Map>
+      </div>
+    </div>
+
+
+
+    
+  );
+};
+ 
+export default GoogleApiWrapper({
+  apiKey: "AIzaSyDh0LyUchQyqlcsHgYRO5w7iUV4ttlNdDI",
+})(App);
+``````````````````````````````````````````````````````````
+--------------------------------------------------------------------------------------------------------------
+
+
+package com.hotelbooking.entity;
+
+public class Booking {
+    
+    private int id;
+    private String guestName;
+    private int roomNumber;
+
+    // Constructors
+    public Booking() {}
+    public Booking( String guestName, int roomNumber) {
+        this.id = 0;
+        this.guestName = guestName;
+        this.roomNumber = roomNumber;
+    }
+
+    // Getters and Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
+    public String getGuestName() { return guestName; }
+    public void setGuestName(String guestName) { this.guestName = guestName; }
+
+    public int getRoomNumber() { return roomNumber; }
+    public void setRoomNumber(int roomNumber) { this.roomNumber = roomNumber; }
+}
+
+
+
+
+package com.hotelbooking.service;
+import com.hotelbooking.entity.Booking;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class BookingService {
+
+    private static int counter = 1;
+    private final List<Booking> bookingList = new ArrayList<>();
+
+    public Booking addBooking(Booking booking) {
+        booking.setId(counter++); // Set unique ID
+        bookingList.add(booking);
+        return booking;
+    }
+
+    public Optional<Booking> getBookingById(int id) {
+        return bookingList.stream()
+                .filter(booking -> booking.getId() == id)
+                .findFirst();
+    }
+}
+
+
+
+package com.hotelbooking.controller;
+import com.hotelbooking.entity.Booking;
+import com.hotelbooking.service.BookingService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/bookings")
+public class BookingController {
+
+@Autowired
+    private  BookingService bookingService;
+
+    
+
+    @PostMapping
+    public ResponseEntity<Booking> addBooking(@RequestBody Booking booking) {
+// booking.setId();
+
+return ResponseEntity.ok(bookingService.addBooking(booking));
+    }
+
+    @GetMapping("/{id}")
+    public Booking getBookingById(@PathVariable int id) {
+        return bookingService.getBookingById(id).get();
+    }
+
+}
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+
+package com.example.securitydemo;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SecurityDemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SecurityDemoApplication.class, args);
+    }
+}
+
+// User Entity
+import jakarta.persistence.*;
+import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import java.util.Collection;
+import java.util.List;
+
+@Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "users")
+public class User implements UserDetails {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String username;
+
+    private String password;
+    private String roles;
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + roles));
+    }
+
+    @Override
+    public boolean isAccountNonExpired() { return true; }
+
+    @Override
+    public boolean isAccountNonLocked() { return true; }
+
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() { return true; }
+}
+
+// User Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsername(String username);
+}
+
+// Custom User Details Service
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+@Service
+public class CustomUserDetailsService implements UserDetailsService {
+    private final UserRepository userRepository;
+
+    public CustomUserDetailsService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    public User loadUserByUsername(String username) throws UsernameNotFoundException {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    }
+}
+
+// Security Configuration
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public InMemoryUserDetailsManager inMemoryUserDetailsManager() {
+        UserDetails user = User.withUsername("user")
+                .password(passwordEncoder().encode("user123"))
+                .roles("USER")
+                .build();
+
+        UserDetails admin = User.withUsername("admin")
+                .password(passwordEncoder().encode("admin123"))
+                .roles("ADMIN")
+                .build();
+
+        return new InMemoryUserDetailsManager(user, admin);
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/admin").hasRole("ADMIN")
+                        .anyRequest().authenticated())
+                .httpBasic()
+                .and()
+                .csrf().disable();
+        return http.build();
+    }
+}
+
+// Controller
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/")
+public class HomeController {
+    @GetMapping
+    public String home() {
+        return "Welcome";
+    }
+
+    @GetMapping("/admin")
+    public String admin() {
+        return "Welcome Admin";
+    }
+}
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+package com.wecp.library.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String username;
+    private String password;
+    private boolean subscribed;
+}
+
+@Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "issues")
+public class Issue {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private Long userId;
+    private Long bookId;
+    private LocalDateTime issuedAt;
+}
+
+package com.wecp.library.repository;
+
+import com.wecp.library.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsername(String username);
+}
+
+package com.wecp.library.repository;
+
+import com.wecp.library.entity.Issue;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface IssueRepository extends JpaRepository<Issue, Long> {}
+
+package com.wecp.library.service;
+
+import com.wecp.library.entity.User;
+import com.wecp.library.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class UserService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    public User createUser(User user) {
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setSubscribed(false);
+        return userRepository.save(user);
+    }
+
+    public User renewSubscription(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setSubscribed(true);
+        return userRepository.save(user);
+    }
+}
+
+package com.wecp.library.controller;
+
+import com.wecp.library.entity.Issue;
+import com.wecp.library.entity.User;
+import com.wecp.library.service.IssueService;
+import com.wecp.library.service.UserService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1")
+public class LibraryController {
+    private final UserService userService;
+    private final IssueService issueService;
+
+    public LibraryController(UserService userService, IssueService issueService) {
+        this.userService = userService;
+        this.issueService = issueService;
+    }
+
+    @PostMapping("/create-user")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        return ResponseEntity.ok(userService.createUser(user));
+    }
+
+    @PostMapping("/issue-book")
+    public ResponseEntity<Issue> issueBook(@RequestParam Long userId, @RequestParam Long bookId) {
+        return ResponseEntity.ok(issueService.issueBook(userId, bookId));
+    }
+
+    @GetMapping("/renew-user-subscription/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<User> renewSubscription(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.renewSubscription(id));
+    }
+}
+
+package com.wecp.library.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class WebSecurityConfigurer {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf().disable()
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/v1/issue-book").permitAll()
+                .requestMatchers("/api/v1/create-user", "/api/v1/renew-user-subscription/**").authenticated()
+                .anyRequest().authenticated()
+            )
+            .formLogin()
+            .and()
+            .httpBasic();
+
+        return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+package com.fcs.wellbeing;
+
+import jakarta.persistence.*;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@SpringBootApplication
+public class EmployeeWellbeingApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(EmployeeWellbeingApplication.class, args);
+    }
+}
+
+@Entity
+@Table(name = "employees")
+class Employee {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long employeeId;
+    private String fullName;
+    private String dateOfBirth;
+    private String email;
+    private String healthStatus;
+
+    @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Program> programs;
+
+    // Getters and Setters
+}
+
+@Entity
+@Table(name = "programs")
+class Program {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long programId;
+    private String programName;
+    private String programDescription;
+    private String startDate;
+    private String endDate;
+
+    @ManyToOne
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
+
+    // Getters and Setters
+}
+
+interface EmployeeRepository extends JpaRepository<Employee, Long> {}
+
+interface ProgramRepository extends JpaRepository<Program, Long> {}
+
+@Service
+class EmployeeService {
+    private final EmployeeRepository employeeRepository;
+
+    public EmployeeService(EmployeeRepository employeeRepository) {
+        this.employeeRepository = employeeRepository;
+    }
+
+    public Employee registerEmployee(Employee employee) {
+        return employeeRepository.save(employee);
+    }
+
+    public void deleteEmployee(Long employeeId) {
+        employeeRepository.deleteById(employeeId);
+    }
+
+    public List<Employee> getAllEmployees() {
+        return employeeRepository.findAll();
+    }
+}
+
+@Service
+class ProgramService {
+    private final ProgramRepository programRepository;
+
+    public ProgramService(ProgramRepository programRepository) {
+        this.programRepository = programRepository;
+    }
+
+    public Program createProgram(Program program) {
+        return programRepository.save(program);
+    }
+
+    public List<Program> getAllPrograms() {
+        return programRepository.findAll();
+    }
+}
+
+@RestController
+@RequestMapping("/employees")
+class EmployeeController {
+    private final EmployeeService employeeService;
+
+    public EmployeeController(EmployeeService employeeService) {
+        this.employeeService = employeeService;
+    }
+
+    @PostMapping
+    public Employee registerEmployee(@RequestBody Employee employee) {
+        return employeeService.registerEmployee(employee);
+    }
+
+    @DeleteMapping("/{employeeId}")
+    public void deleteEmployee(@PathVariable Long employeeId) {
+        employeeService.deleteEmployee(employeeId);
+    }
+
+    @GetMapping
+    public List<Employee> getAllEmployees() {
+        return employeeService.getAllEmployees();
+    }
+}
+
+@RestController
+@RequestMapping("/programs")
+class ProgramController {
+    private final ProgramService programService;
+
+    public ProgramController(ProgramService programService) {
+        this.programService = programService;
+    }
+
+    @PostMapping
+    public Program createProgram(@RequestBody Program program) {
+        return programService.createProgram(program);
+    }
+
+    @GetMapping
+    public List<Program> getAllPrograms() {
+        return programService.getAllPrograms();
+    }
+}
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+package com.site.spring.controller;
+
+import com.site.spring.model.Student;
+import com.site.spring.service.StudentService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/students")
+public class StudentController {
+
+    @Autowired
+    private StudentService studentService;
+
+    @GetMapping
+    public List<Student> getAllStudents() {
+        return studentService.getAllStudents();
+    }
+
+    @PostMapping
+    public ResponseEntity<String> addStudent(@RequestBody Student student) {
+        studentService.addStudent(student);
+        return ResponseEntity.ok("Student added successfully");
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Student> getStudentById(@PathVariable int id) {
+        Student student = studentService.getStudentById(id);
+        return student != null ? ResponseEntity.ok(student) : ResponseEntity.notFound().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<String> updateStudent(@PathVariable int id, @RequestBody Student student) {
+        boolean updated = studentService.updateStudent(id, student);
+        return updated ? ResponseEntity.ok("Student updated successfully") : ResponseEntity.notFound().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteStudent(@PathVariable int id) {
+        boolean deleted = studentService.deleteStudent(id);
+        return deleted ? ResponseEntity.ok("Student deleted successfully") : ResponseEntity.notFound().build();
+    }
+}
+
+package com.student.api.controller;
+
+import com.site.spring.model.Student;
+import org.springframework.jdbc.core.RowMapper;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class StudentRowMapper implements RowMapper<Student> {
+    @Override
+    public Student mapRow(ResultSet rs, int rowNum) throws SQLException {
+        Student student = new Student();
+        student.setId(rs.getInt("id"));
+        student.setName(rs.getString("name"));
+        return student;
+    }
+}
+
+package com.site.spring.model;
+
+public class Student {
+    private int id;
+    private String name;
+
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+}
+
+package com.site.spring.service;
+
+import com.site.spring.model.Student;
+import com.site.spring.repository.StudentRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class StudentService {
+
+    @Autowired
+    private StudentRepository studentRepository;
+
+    public List<Student> getAllStudents() {
+        return studentRepository.getAllStudents();
+    }
+
+    public void addStudent(Student student) {
+        studentRepository.addStudent(student);
+    }
+
+    public Student getStudentById(int id) {
+        return studentRepository.getStudentById(id);
+    }
+
+    public boolean updateStudent(int id, Student student) {
+        return studentRepository.updateStudent(id, student);
+    }
+
+    public boolean deleteStudent(int id) {
+        return studentRepository.deleteStudent(id);
+    }
+}
+
+package com.site.spring.repository;
+
+import com.site.spring.model.Student;
+import com.student.api.controller.StudentRowMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public class StudentRepository {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    public List<Student> getAllStudents() {
+        String sql = "SELECT * FROM students";
+        return jdbcTemplate.query(sql, new StudentRowMapper());
+    }
+
+    public void addStudent(Student student) {
+        String sql = "INSERT INTO students (id, name) VALUES (?, ?)";
+        jdbcTemplate.update(sql, student.getId(), student.getName());
+    }
+
+    public Student getStudentById(int id) {
+        String sql = "SELECT * FROM students WHERE id = ?";
+        return jdbcTemplate.queryForObject(sql, new StudentRowMapper(), id);
+    }
+
+    public boolean updateStudent(int id, Student student) {
+        String sql = "UPDATE students SET name = ? WHERE id = ?";
+        return jdbcTemplate.update(sql, student.getName(), id) > 0;
+    }
+
+    public boolean deleteStudent(int id) {
+        String sql = "DELETE FROM students WHERE id = ?";
+        return jdbcTemplate.update(sql, id) > 0;
+    }
+}
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+// File: LibraryController.java
+package com.wecp.library.controller;
+
+import com.wecp.library.controller.exception.UserNotSubscribedException;
+import com.wecp.library.domain.Issue;
+import com.wecp.library.domain.User;
+import com.wecp.library.repository.IssueRepository;
+import com.wecp.library.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/v1")
+public class LibraryController {
+
+    @Autowired
+    private UserRepository userRepo;
+
+    @Autowired
+    private IssueRepository issueRepo;
+
+    @PostMapping("/issue-book")
+    public ResponseEntity<Issue> issueBook(@RequestBody Issue issue) {
+        Optional<User> userOpt = userRepo.findById(issue.getUser().getId());
+        if (userOpt.isPresent() && userOpt.get().getSubscribed()) {
+            Issue savedIssue = issueRepo.save(issue);
+            return ResponseEntity.ok(savedIssue);
+        } else {
+            throw new UserNotSubscribedException("User subscription has expired");
+        }
+    }
+
+    @PostMapping("/create-user")
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        User savedUser = userRepo.save(user);
+        return ResponseEntity.ok(savedUser);
+    }
+
+    @GetMapping("/renew-user-subscription/{id}")
+    public ResponseEntity<User> renewUserSubscription(@PathVariable Long id) {
+        Optional<User> userOpt = userRepo.findById(id);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setSubscribed(true);
+            userRepo.save(user);
+            return ResponseEntity.ok(user);
+        } else {
+            return ResponseEntity.noContent().build();
+        }
+    }
+}
+
+// File: WebSecurityConfigurer.java
+package com.wecp.library.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+@Configuration
+@EnableWebSecurity
+public class WebSecurityConfigurer extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .csrf().disable()
+            .authorizeRequests()
+            .antMatchers("/api/v1/issue-book").permitAll()
+            .antMatchers("/api/v1/create-user", "/api/v1/renew-user-subscription/**").authenticated()
+            .anyRequest().authenticated()
+            .and()
+            .httpBasic();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+// File: UserRepository.java
+package com.wecp.library.repository;
+
+import com.wecp.library.domain.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+}
+
+// File: IssueRepository.java
+package com.wecp.library.repository;
+
+import com.wecp.library.domain.Issue;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface IssueRepository extends JpaRepository<Issue, Long> {
+}
+
+// File: User.java
+package com.wecp.library.domain;
+
+import javax.persistence.*;
+
+@Entity
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String username;
+    private String password;
+    private Boolean subscribed;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public Boolean getSubscribed() { return subscribed; }
+    public void setSubscribed(Boolean subscribed) { this.subscribed = subscribed; }
+}
+
+// File: Issue.java
+package com.wecp.library.domain;
+
+import javax.persistence.*;
+
+@Entity
+public class Issue {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String bookName;
+
+    @ManyToOne
+    private User user;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getBookName() { return bookName; }
+    public void setBookName(String bookName) { this.bookName = bookName; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+}
+
+// File: UserNotSubscribedException.java
+package com.wecp.library.controller.exception;
+
+public class UserNotSubscribedException extends RuntimeException {
+    public UserNotSubscribedException(String message) {
+        super(message);
+    }
+}
+# File: application.properties
+spring.datasource.url=jdbc:mysql://localhost:3306/library_db
+spring.datasource.username=root
+spring.datasource.password=your_password
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.security.user.name=admin
+spring.security.user.password=admin123
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+package com.ust.entity;
+
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+public class Policy {
+
+   // implement entity
+   @Id
+   @GeneratedValue(strategy = GenerationType.IDENTITY)
+   private Long policyId;
+
+   @Column(unique = true)
+   private String policyNumber;
+
+   private String type;
+
+   private double coverageAmount;
+
+   private double premium;
+
+   private String holderName;
+
+   private String holderAddress;
+
+   private String holderContactNumber;
+
+   private String holderEmail;
+
+   @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL)
+   @JsonIgnore(value = true)
+   private List<Claim> claims = new ArrayList<>();
+
+   public Policy() {
+   }
+
+   public Policy(String policyNumber, String type, double coverageAmount, double premium, String holderName,
+         String holderAddress, String holderContactNumber, String holderEmail, List<Claim> claims) {
+      this.policyNumber = policyNumber;
+      this.type = type;
+      this.coverageAmount = coverageAmount;
+      this.premium = premium;
+      this.holderName = holderName;
+      this.holderAddress = holderAddress;
+      this.holderContactNumber = holderContactNumber;
+      this.holderEmail = holderEmail;
+   }
+
+   public Policy(Long policyId, String policyNumber, String type, double coverageAmount, double premium,
+         String holderName, String holderAddress, String holderContactNumber, String holderEmail, List<Claim> claims) {
+      this.policyId = policyId;
+      this.policyNumber = policyNumber;
+      this.type = type;
+      this.coverageAmount = coverageAmount;
+      this.premium = premium;
+      this.holderName = holderName;
+      this.holderAddress = holderAddress;
+      this.holderContactNumber = holderContactNumber;
+      this.holderEmail = holderEmail;
+   }
+
+   public Long getPolicyId() {
+      return policyId;
+   }
+
+   public void setPolicyId(Long policyId) {
+      this.policyId = policyId;
+   }
+
+   public String getPolicyNumber() {
+      return policyNumber;
+   }
+
+   public void setPolicyNumber(String policyNumber) {
+      this.policyNumber = policyNumber;
+   }
+
+   public String getType() {
+      return type;
+   }
+
+   public void setType(String type) {
+      this.type = type;
+   }
+
+   public double getCoverageAmount() {
+      return coverageAmount;
+   }
+
+   public void setCoverageAmount(double coverageAmount) {
+      this.coverageAmount = coverageAmount;
+   }
+
+   public double getPremium() {
+      return premium;
+   }
+
+   public void setPremium(double premium) {
+      this.premium = premium;
+   }
+
+   public String getHolderName() {
+      return holderName;
+   }
+
+   public void setHolderName(String holderName) {
+      this.holderName = holderName;
+   }
+
+   public String getHolderAddress() {
+      return holderAddress;
+   }
+
+   public void setHolderAddress(String holderAddress) {
+      this.holderAddress = holderAddress;
+   }
+
+   public String getHolderContactNumber() {
+      return holderContactNumber;
+   }
+
+   public void setHolderContactNumber(String holderContactNumber) {
+      this.holderContactNumber = holderContactNumber;
+   }
+
+   public String getHolderEmail() {
+      return holderEmail;
+   }
+
+   public void setHolderEmail(String holderEmail) {
+      this.holderEmail = holderEmail;
+   }
+
+   public List<Claim> getClaims() {
+      return claims;
+   }
+
+   public void setClaims(List<Claim> claims) {
+      this.claims = claims;
+   }
+
+   
+}
+
+package com.ust.entity;
+
+
+import jakarta.persistence.*;
+
+
+import java.util.Date;
+
+@Entity
+public class Claim {
+    // implement entity
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long claimId;
+
+    @Column(unique = true)
+    private String claimNumber;
+
+    private Date claimDate;
+    private double claimAmount;
+    private String description;
+
+    @ManyToOne
+    @JoinColumn(name = "policy_id")
+    private Policy policy;
+
+    public Claim() {
+    }
+
+    public Claim(String claimNumber, Date claimDate, double claimAmount, String description, Policy policy) {
+        this.claimNumber = claimNumber;
+        this.claimDate = claimDate;
+        this.claimAmount = claimAmount;
+        this.description = description;
+        this.policy = policy;
+    }
+
+    public Claim(Long claimId, String claimNumber, Date claimDate, double claimAmount, String description,
+            Policy policy) {
+        this.claimId = claimId;
+        this.claimNumber = claimNumber;
+        this.claimDate = claimDate;
+        this.claimAmount = claimAmount;
+        this.description = description;
+        this.policy = policy;
+    }
+
+    public Long getClaimId() {
+        return claimId;
+    }
+
+    public void setClaimId(Long claimId) {
+        this.claimId = claimId;
+    }
+
+    public String getClaimNumber() {
+        return claimNumber;
+    }
+
+    public void setClaimNumber(String claimNumber) {
+        this.claimNumber = claimNumber;
+    }
+
+    public Date getClaimDate() {
+        return claimDate;
+    }
+
+    public void setClaimDate(Date claimDate) {
+        this.claimDate = claimDate;
+    }
+
+    public double getClaimAmount() {
+        return claimAmount;
+    }
+
+    public void setClaimAmount(double claimAmount) {
+        this.claimAmount = claimAmount;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Policy getPolicy() {
+        return policy;
+    }
+
+    public void setPolicy(Policy policy) {
+        this.policy = policy;
+    }
+
+}
+
+package com.ust.controller;
+
+
+import com.ust.entity.Claim;
+import com.ust.service.ClaimService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/claims")
+public class ClaimController {
+
+    @Autowired
+    private ClaimService claimService;
+
+    @PostMapping
+    public Claim fileClaim(@RequestBody Claim claim) {
+       // file a claim
+       return claimService.fileClaim(claim);
+    }
+
+
+    @GetMapping
+    public List<Claim> getAllClaims() {
+      // get all claims
+      return claimService.getAllClaims();
+    }
+}
+
+
+
+package com.ust.controller;
+
+
+import com.ust.entity.Policy;
+import com.ust.service.PolicyService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/policies")
+public class PolicyController {
+
+    @Autowired
+    private PolicyService policyService;
+
+
+    @PostMapping
+    public Policy addPolicy(@RequestBody Policy policy) {
+        // add policy
+        return policyService.addPolicy(policy);
+    }
+
+
+    @DeleteMapping("/{policyId}")
+    public void deletePolicy(@PathVariable Long policyId) {
+       // delete policy
+       policyService.deletePolicy(policyId);
+    }
+
+
+    @GetMapping
+    public List<Policy> getAllPolicies() {
+        // get all policies
+        return policyService.getAllPolicies();
+    }
+}
+
+
+package com.ust.service;
+
+
+import com.ust.entity.Claim;
+import com.ust.repository.ClaimRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class ClaimService {
+
+    @Autowired
+    private ClaimRepository claimRepository;
+
+    public Claim fileClaim(Claim claim) {
+        // add claim to database
+        return claimRepository.save(claim);
+    }
+
+    public List<Claim> getAllClaims() {
+       // get all claims from database
+       return claimRepository.findAll();
+    }
+}
+
+package com.ust.service;
+
+
+import com.ust.entity.Policy;
+import com.ust.repository.PolicyRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class PolicyService {
+
+   @Autowired
+    private PolicyRepository policyRepository;
+
+    public Policy addPolicy(Policy policy) {
+       // add policy to database
+       return policyRepository.save(policy);
+    }
+
+    public void deletePolicy(Long policyId) {
+       // delete policy from database
+       policyRepository.deleteById(policyId);
+    }
+
+    public List<Policy> getAllPolicies() {
+      // get all policies from database
+      return policyRepository.findAll();
+    }
+}
+
+package com.ust.repository;
+
+
+import com.ust.entity.Claim;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ClaimRepository extends JpaRepository<Claim, Long>  {
+    // extent jpa repository
+}
+
+package com.ust.repository;
+
+import com.ust.entity.Policy;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface PolicyRepository extends JpaRepository<Policy, Long> {
+    // extends JpaRepository
+}
+
+
+``````````````````````````````````````````````````````````
+//CREATE A WEB SERVER ROUTE USING EXPRESS & NODE JS
+
+const express = require('express');
+
+// TODO: Initiate an express app and store it in the variable app. Don't change the variable name
+const app = express(); // Initialize the express app correctly
+
+// TODO: Implement a get method that accepts the request to the root url '/' and responds with the json message { message: 'Hello, world!' }
+app.get('/', (req, res) => {
+  res.json({ message: 'Hello, world!' });
+});
+
+// NOTE: You don't have to start the express app and make it listen on port 3000. The code to start the app is already present in start-server.js
+module.exports = app;
+``````````````````````````````````````````````````````````
+export class Employee {
+  empId: number = 0;
+  empName: string = "";
+  empSalary: number = 0;
+
+  constructor(empId: number, empName: string, empSalary: number) {
+    this.empId = empId;
+    this.empName = empName;
+    this.empSalary = empSalary;
+  }
+
+  displayDetails(): boolean {
+    console.log(`Employee Details:
+Employee ID: ${this.empId}
+Employee Name: ${this.empName}
+Employee Salary: ${this.empSalary}`);
+    return true;
+  }
+}
+
+// Example usage:
+let emp: Employee = new Employee(1, 'John Doe', 50000);
+emp.displayDetails();
+``````````````````````````````````````````````````````````
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Course Registration</title>
+    <style>
+      .form-group {
+        margin-bottom: 10px;
+      }
+      .error {
+        color: red;
+        font-size: 0.8em;
+      }
+      .success-message {
+        color: green;
+        font-weight: bold;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="registration-form">
+      <form id="registration-form">
+        <div class="form-group">
+          <label for="studentID">Student ID</label>
+          <input type="text" id="studentID" name="studentID" class="form-control"/>
+          <div id="studentID-error" class="form-group error"></div>
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" class="form-control"/>
+          <div id="email-error" class="form-group error"></div>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" class="form-control"/>
+          <div id="password-error" class="form-group error"></div>
+        </div>
+        <button type="submit" class="submit-button">Submit</button>
+        <div id="success-message" class="success-message" style="display: none">
+          Registration successful!
+        </div>
+      </form>
+    </div>
+
+    <script>
+      const registrationForm = document.getElementById("registration-form");
+      const studentID = document.getElementById("studentID");
+      const email = document.getElementById("email");
+      const password = document.getElementById("password");
+      const studentIDError = document.getElementById("studentID-error");
+      const emailError = document.getElementById("email-error");
+      const passwordError = document.getElementById("password-error");
+      const successMessage = document.getElementById("success-message");
+
+      registrationForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        let errorForm = false;
+
+        // Reset error messages
+        studentIDError.textContent = "";
+        emailError.textContent = "";
+        passwordError.textContent = "";
+        successMessage.style.display = "none";
+
+        // Validate Student ID
+        const studentIDValue = studentID.value.trim();
+        const studentIDRegex = /^[a-zA-Z0-9]+$/;
+        if (!studentIDValue) {
+          studentIDError.textContent = "Student ID is required.";
+          errorForm = true;
+        } else if (!studentIDRegex.test(studentIDValue)) {
+          studentIDError.textContent = "Student ID can only contain letters and numbers.";
+          errorForm = true;
+        }
+
+        // Validate Email
+        const emailValue = email.value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailValue) {
+          emailError.textContent = "Email is required.";
+          errorForm = true;
+        } else if (!emailRegex.test(emailValue)) {
+          emailError.textContent = "Please enter a valid email address.";
+          errorForm = true;
+        }
+
+        // Validate Password
+        const passwordValue = password.value;
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+        if (!passwordValue) {
+          passwordError.textContent = "Password is required.";
+          errorForm = true;
+        } else if (!passwordRegex.test(passwordValue)) {
+          passwordError.textContent =
+            "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.";
+          errorForm = true;
+        }
+
+        // Show success message if all fields are valid
+        if (!errorForm) {
+          successMessage.style.display = "block";
+          registrationForm.reset();
+        }
+      });
+    </script>
+  </body>
+</html>
+``````````````````````````````````````````````````````````
+// Define two arrays: one for names and another for marks
+const names: string[] = ["A", "B"];
+const marks: number[] = [10, 20];
+
+// Display names and marks using a for loop
+console.log("Student Names and Marks");
+for (let i = 0; i < names.length; i++) {
+  console.log(`${names[i]}: ${marks[i]}`);
+}
+
+// Function to calculate average
+export function findAvg(marks: number[]): number {
+  let tot = 0;
+  for (let i = 0; i < marks.length; i++) {
+    tot += marks[i];
+  }
+  const averageMarks = tot / marks.length;
+  return averageMarks;
+}
+
+// Display the average
+console.log(`\nAverage Marks: ${findAvg(marks)}`);
+
+``````````````````````````````````````````````````````````
+// Function to generate a random number between min and max
+const getRandomNumber = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+// Function to create an array of 10 random numbers between 1 and 100
+const createRandomNumbersArray = () => {
+  const numbers = [];
+  for (let i = 0; i < 10; i++) {
+    numbers.push(getRandomNumber(1, 100));
+  }
+  return numbers;
+};
+
+// Arrow function to calculate the sum of array values
+const calculateSum = (arr) => arr.reduce((sum, num) => sum + num, 0);
+
+// Arrow function to calculate average
+const calculateAverage = (arr) => calculateSum(arr) / arr.length;
+
+// Function to print array elements using an iterator
+const printArrayElements = (arr) => {
+  console.log('Generated Array:', arr);
+  console.log('Elements:');
+  const iterator = arr[Symbol.iterator]();
+  let index = 1;
+  let result = iterator.next();
+  while (!result.done) {
+    console.log(`Element ${index}: ${result.value}`);
+    result = iterator.next();
+    index++;
+  }
+};
+
+// Exporting all necessary modules
+module.exports = {
+  getRandomNumber,
+  calculateSum,
+  calculateAverage,
+  printArrayElements,
+  createRandomNumbersArray
+};
+``````````````````````````````````````````````````````````
+const products = [
+    { id: 1, name: "Product 1", price: 10 },
+    { id: 2, name: "Product 2", price: 20 },
+    { id: 3, name: "Product 3", price: 30 }
+];
+
+const shoppingCart = {
+    items: [],
+    coupon: null,
+
+    // Add a product to the cart
+    addToCart: function(productId, quantity) {
+        const product = products.find(p => p.id === productId);
+        if (!product) {
+            console.log("Product not found.");
+            return;
+        }
+
+        const existingItem = this.items.find(item => item.product.id === productId);
+        if (existingItem) {
+            existingItem.quantity += quantity;
+        } else {
+            this.items.push({ product, quantity });
+        }
+        console.log(`${product.name} added to cart (x${quantity}).`);
+    },
+
+    // View current items in cart
+    viewCart: function() {
+        console.log("Cart Contents:");
+        if (this.items.length === 0) {
+            console.log("Cart is empty.");
+            return;
+        }
+        this.items.forEach(item => {
+            console.log(`${item.product.name} - Quantity: ${item.quantity} - Price: $${item.product.price}`);
+        });
+    },
+
+    // Apply a discount coupon
+    applyCoupon: function(couponCode) {
+        if (this.coupon) {
+            console.log("A coupon has already been applied.");
+            return;
+        }
+        if (couponCode === "DISCOUNT10") {
+            this.coupon = "DISCOUNT10";
+            console.log("Coupon applied: DISCOUNT10");
+        } else {
+            console.log("Invalid coupon code.");
+        }
+    },
+
+    // Calculate total amount payable
+    calculateTotalAmount: function() {
+        let totalAmount = 0;
+        this.items.forEach(item => {
+            totalAmount += item.product.price * item.quantity;
+        });
+
+        if (this.coupon === "DISCOUNT10") {
+            totalAmount *= 0.9; // 10% off
+            console.log("Coupon Applied: 10% discount");
+        }
+
+        console.log(`Total payable amount: $${totalAmount.toFixed(2)}`);
+    }
+};
+
+// Example usage:
+shoppingCart.addToCart(1, 2);               // Adds 2 units of Product 1
+shoppingCart.addToCart(2, 1);               // Adds 1 unit of Product 2
+shoppingCart.viewCart();                    // Displays current cart
+shoppingCart.applyCoupon("DISCOUNT10");     // Applies 10% discount
+shoppingCart.calculateTotalAmount();        // Shows final total
+
+module.exports = shoppingCart;
+``````````````````````````````````````````````````````````
+function solve(N, M) {
+return N % M;
+}
+const N = BigInt(gets().trim());
+const M = BigInt(gets().trim());
+const result = solve(N, M);
+print(result);
+
+``````````````````````````````````````````````````````````
+
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+``````````````````````````````````````````````````````````
+
