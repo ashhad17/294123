@@ -3112,3 +3112,145 @@ export default App;
 
 ``````````````````````````````````````````````````````````
 ``````````````````````````````````````````````````````````
+
+//player.js
+import { playersData } from "./PlayersData";
+
+const allPlayers = playersData;
+
+
+export const getPlayers = () => {
+return allPlayers;
+};
+
+export const generateId = () => {
+
+    const ids=allPlayers.map(player=>player.id);
+    return ids.length?Math.max(...ids)+1:1;
+};
+
+/* 
+    Returns the player for a given player id
+  */
+export const getPlayer = (id) => {
+    return playersData.find(player=>player.id===id);
+};
+
+/* 
+    Adds the player to player list
+*/
+export const addPlayer = (player) => {
+    playersData.push(player);
+};
+
+/* 
+    Updates the player given the index and new changed values
+*/
+export const updatePlayer = (index, newPlayer) => {
+    if(index!==-1){
+        allPlayers[index]={...allPlayers[index],...newPlayer};
+    }
+};
+
+/*
+    Deletes a player from player list
+*/
+export const deletePlayer = (index) => {
+    // const index1=allPlayers.findIndex(p=>p.id===id);
+  if(index!==-1){
+    allPlayers.splice(index,1);
+  }
+};
+
+export const getIndexOfPlayer = (id) => {
+    return allPlayers.findIndex(player=>player.id===id);
+}
+
+//team.js
+
+import { ElectricScooterSharp } from '@mui/icons-material';
+import toast from 'react-hot-toast';
+
+const alert = (msg) => {
+  toast.error(msg, {position: 'top-right'})
+}
+
+
+let team = {
+  title: "Mumbai Indians",
+  players: [],
+};
+
+export const getTeam = () => {
+  return team;
+};
+
+export const setTeam = (tm) => {
+  team = tm;
+};
+
+/*
+    Should edit a player of given id to nwPlayer
+  */
+export const editTeamPlayer = (id, nwPlayer) => {
+  const index=team.players.findIndex(p=>p.id===id);
+  if(index!==-1){
+    team.players[index]={...team.players[index],...nwPlayer};
+  }
+  else{
+    alert("Player not found to edit");
+  }
+};
+/*
+    Should add a player to team, if the player 
+    already exist alert "This Player already exist in your team !!"
+  */
+export const addTeamPlayer = (player) => {
+  const exists=team.players.some(p=>p.id===player.id);
+  if(exists){
+    alert("This player already exist in your team !!");
+    return;
+  }
+  team.players.push(player);
+};
+
+/*
+    Should delete a player from team
+  */
+export const deleteTeamPlayer = (id) => {
+  const index=team.players.findIndex(p=>p.id===id);
+  if(index!==-1){
+    team.players.splice(index,1);
+
+  }
+else{
+  alert("Player not found to delete");
+}
+};
+
+
+/*
+    Returns error messages if a team does not have exactly 2 batsmen
+    2 bowlers and 1 wicket-keeper
+  */
+export const getStatus = () => {
+const counts={
+  batsman:0,
+  bowler:0,
+  wicketkeeper:0
+};
+team.players.forEach(player=>{
+  const role=player.role;
+  if(role==="Batsman") counts.batsman++;
+  if(role==="Bowler") counts.bowler++;
+  if(role==="Wicket Keeper") counts.wicketkeeper++;
+});
+const errors=[]
+if(counts.batsman<2) errors.push(`You do not have required number of batsmen in your team`);
+if(counts.bowler<2) errors.push(`You do not have required number of bowler in your team`);
+if(counts.wicketkeeper<1) errors.push(`You do not have the required number of wicketkeepers in your team`);
+return errors;
+
+
+};
+
