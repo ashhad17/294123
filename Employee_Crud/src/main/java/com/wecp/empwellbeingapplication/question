@@ -1,0 +1,34 @@
+1. Build a Spring Boot Layered
+Application
+< Previous
+Next, >
+Develop a Spring Boot layered application that provides Create and Read operations on an Employee entity using Controller and Service layers. The application should handle custom exceptions and respond with appropriate HTTP status codes based on the success or failure of the operations.
+Tasks:
+I
+Model Implementation
+• Create an Employee model with fields: id (type Long), name, designation, and salary (type double).
+Custom Exception
+• Implement an exception class named InvalidSalaryException that extends RuntimeException. The exception should be thrown when an employee's salary is less than 10,000.
+Service Layer
+• Implement a service class named EmployeeService that contains: An ArrayList (or List) to store Employee objects.
+• Methods for Create and Read operations
+1. getAllEmployees): Retrieves all employees.
+2. addEmployee(Employee employee): Adds a new employee, but before adding, it should validate the salary using the custom exception.
+before adding, it should validate the salary using the custom exception.
+Controller Layer
+• Implement a controller named EmployeeController using the @RestController annotation.
+I
+• Use the @Autowired annotation to inject the EmployeeService instance into the controller.
+• Map Create and Read operations to appropriate endpoints, ensuring you provide suitable HTTP status codes.
+1. GET /employees: Retrieve all employees (200 OK).
+2. POST /employees: Add a new employee. Return 200 OK if successful, 400 Bad Request if input data (like invalid salary) is invalid.
+• Implement an exception handler method in the controller using @ExceptionHandler to catch the InvalidSalaryException and return a
+400 Bad Request status.
+Annotations to use
+• @Autowired
+• @RestController
+• @RequestMapping
+• @GetMapping
+• @PostMapping
+• @ResponseStatus
+• @ExceptionHandler
